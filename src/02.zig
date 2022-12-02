@@ -1,7 +1,6 @@
 const std = @import("std");
 const fs = std.fs;
 const io = std.io;
-const math = std.math;
 
 const Day02Error = error {
   InvalidStrategy,
