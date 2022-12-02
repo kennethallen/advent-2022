@@ -5,8 +5,6 @@ const math = std.math;
 
 const toplist = @import("toplist.zig");
 
-const alloc = std.heap.page_allocator;
-
 fn order_u32(a: u32, b: u32) math.Order {
   return math.order(a, b);
 }
@@ -18,24 +16,17 @@ pub fn main() !void {
     defer file.close();
     const reader = file.reader();
 
-    var line = std.ArrayList(u8).init(alloc);
-    defer line.deinit();
+    var buf: [100]u8 = undefined;
 
     var elf: ?u32 = null;
-    while (true) {
-      reader.readUntilDelimiterArrayList(&line, '\n', 100)
-        catch |err| switch (err) {
-          error.EndOfStream => break,
-          else => return err,
-        };
-
-      if (line.items.len == 0) {
+    while (try reader.readUntilDelimiterOrEof(&buf, '\n')) |line| {
+      if (line.len == 0) {
         if (elf) |e| {
           _ = max_elves.insert(e);
           elf = null;
         }
       } else {
-        elf = (elf orelse 0) + try std.fmt.parseUnsigned(u32, line.items, 0);
+        elf = (elf orelse 0) + try std.fmt.parseUnsigned(u32, line, 0);
       }
     }
     if (elf) |e| { _ = max_elves.insert(e); }
