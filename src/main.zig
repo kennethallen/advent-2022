@@ -19,7 +19,7 @@ pub fn main() !void {
   while (args.next()) |arg| {
     _ = switch (try fmt.parseUnsigned(usize, arg, 0)) {
        1 => try @import("01.zig").main(),
-//       2 => try @import("02.zig").main(),
+       2 => try @import("02.zig").main(),
 //       3 => try @import("03.zig").main(),
 //       4 => try @import("04.zig").main(),
 //       5 => try @import("05.zig").main(),
