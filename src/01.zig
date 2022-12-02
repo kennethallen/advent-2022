@@ -26,9 +26,9 @@ pub fn main() !void {
       reader.readUntilDelimiterArrayList(&line, '\n', 100)
         catch |err| switch (err) {
           error.EndOfStream => break,
-          else => unreachable,
+          else => return err,
         };
-      
+
       if (line.items.len == 0) {
         if (elf) |e| {
           _ = max_elves.insert(e);
