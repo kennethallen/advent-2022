@@ -8,7 +8,11 @@ const ArgError = error {
 };
 
 pub fn main() !void {
-  var args = try process.argsWithAllocator(heap.page_allocator);
+  var gpa = heap.GeneralPurposeAllocator(.{}){};
+  defer _ = gpa.deinit();
+  const allocator = gpa.allocator();
+
+  var args = try process.argsWithAllocator(allocator);
   defer args.deinit();
 
   _ = args.next();
