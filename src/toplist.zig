@@ -27,7 +27,7 @@ pub fn Toplist(comptime T: type, comptime size: usize,
       } else if (rank == 0) {
         return false;
       } else {
-        mem.copy(T, self.items[0..], self.items[1..rank]);
+        mem.copy(T, &self.items, self.items[1..rank]);
         self.items[rank - 1] = x;
         return true;
       }

@@ -10,9 +10,9 @@ const ArgError = error {
 pub fn main() !void {
   var gpa = heap.GeneralPurposeAllocator(.{}){};
   defer _ = gpa.deinit();
-  const allocator = gpa.allocator();
+  const alloc = gpa.allocator();
 
-  var args = try process.argsWithAllocator(allocator);
+  var args = try process.argsWithAllocator(alloc);
   defer args.deinit();
 
   _ = args.next();
