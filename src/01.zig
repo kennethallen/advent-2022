@@ -34,5 +34,5 @@ pub fn main() !void {
   const maxElf = maxElves.asSlice()[maxElves.count - 1];
   var sumMaxElves: u64 = 0;
   for (maxElves.asSlice()) |elf| sumMaxElves += elf;
-  try std.io.getStdOut().writer().print("01 {} {}\n", .{ maxElf, sumMaxElves });
+  try io.getStdOut().writer().print("01 {} {}\n", .{ maxElf, sumMaxElves });
 }

@@ -33,5 +33,5 @@ pub fn main() !void {
     }
   }
 
-  try std.io.getStdOut().writer().print("02 {} {}\n", .{ score0, score1 });
+  try io.getStdOut().writer().print("02 {} {}\n", .{ score0, score1 });
 }
