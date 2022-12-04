@@ -2,14 +2,13 @@ const std = @import("std");
 const fs = std.fs;
 const io = std.io;
 
-const Day03Error = error {
-  InvalidRucksack,
-  NoMisplacedItem,
-  NoBadge,
+const Day04Error = error {
+  InvalidAssignmentPair
 };
 
 pub fn main() !void {
   var fullContains: u64 = 0;
+  var overlaps: u64 = 0;
   {
     const file = try fs.cwd().openFile("src/04.txt", .{});
     defer file.close();
@@ -27,10 +26,15 @@ pub fn main() !void {
       const e1hi = try std.fmt.parseUnsigned(u64,
         try reader.readUntilDelimiter(&buf, '\n'), 0);
 
+      if (e0lo > e0hi or e1lo > e1hi)
+        return Day04Error.InvalidAssignmentPair;
+
       if ((e0lo >= e1lo and e0hi <= e1hi) or (e1lo >= e0lo and e1hi <= e0hi))
         fullContains += 1;
+      if (e0hi >= e1lo and e1hi >= e0lo)
+        overlaps += 1;
     }
   }
 
-  try io.getStdOut().writer().print("04 {} {}\n", .{ fullContains, 0 });
+  try io.getStdOut().writer().print("04 {} {}\n", .{ fullContains, overlaps });
 }
