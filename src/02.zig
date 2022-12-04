@@ -6,7 +6,7 @@ const Day02Error = error {
   InvalidStrategy,
 };
 
-pub fn main() !void {
+pub fn main() ![2]u64 {
   var score0: u64 = 0;
   var score1: u64 = 0;
   {
@@ -33,5 +33,5 @@ pub fn main() !void {
     }
   }
 
-  try io.getStdOut().writer().print("02 {} {}\n", .{ score0, score1 });
+  return .{ score0, score1 };
 }

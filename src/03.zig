@@ -8,7 +8,7 @@ const Day03Error = error {
   NoBadge,
 };
 
-pub fn main() !void {
+pub fn main() ![2]u64 {
   var sumPrios0: u64 = 0;
   var sumPrios1: u64 = 0;
   {
@@ -32,7 +32,7 @@ pub fn main() !void {
     }
   }
 
-  try io.getStdOut().writer().print("03 {} {}\n", .{ sumPrios0, sumPrios1 });
+  return .{ sumPrios0, sumPrios1 };
 }
 
 fn part0(sack: []const u8) !u8 {

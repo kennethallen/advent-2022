@@ -3,10 +3,10 @@ const fs = std.fs;
 const io = std.io;
 
 const Day04Error = error {
-  InvalidAssignmentPair
+  InvalidAssignmentPair,
 };
 
-pub fn main() !void {
+pub fn main() ![2]u64 {
   var fullContains: u64 = 0;
   var overlaps: u64 = 0;
   {
@@ -36,5 +36,5 @@ pub fn main() !void {
     }
   }
 
-  try io.getStdOut().writer().print("04 {} {}\n", .{ fullContains, overlaps });
+  return .{ fullContains, overlaps };
 }

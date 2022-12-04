@@ -5,11 +5,7 @@ const math = std.math;
 
 const toplist = @import("toplist.zig");
 
-fn orderU64(a: u64, b: u64) math.Order {
-  return math.order(a, b);
-}
-
-pub fn main() !void {
+pub fn main() ![2]u64 {
   var maxElves = toplist.Toplist(u64, 3, orderU64){};
   {
     const file = try fs.cwd().openFile("src/01.txt", .{});
@@ -34,5 +30,9 @@ pub fn main() !void {
   const maxElf = maxElves.asSlice()[maxElves.count - 1];
   var sumMaxElves: u64 = 0;
   for (maxElves.asSlice()) |elf| sumMaxElves += elf;
-  try io.getStdOut().writer().print("01 {} {}\n", .{ maxElf, sumMaxElves });
+  return .{ maxElf, sumMaxElves };
+}
+
+fn orderU64(a: u64, b: u64) math.Order {
+  return math.order(a, b);
 }

@@ -1,5 +1,6 @@
 const std = @import("std");
 const fmt = std.fmt;
+const io = std.io;
 const heap = std.heap;
 const process = std.process;
 
@@ -17,7 +18,8 @@ pub fn main() !void {
 
   _ = args.next();
   while (args.next()) |arg| {
-    _ = switch (try fmt.parseUnsigned(usize, arg, 0)) {
+    const n = try fmt.parseUnsigned(usize, arg, 0);
+    const s = switch (n) {
        1 => try @import("01.zig").main(),
        2 => try @import("02.zig").main(),
        3 => try @import("03.zig").main(),
@@ -45,5 +47,6 @@ pub fn main() !void {
 //      25 => try @import("25.zig").main(),
       else => return ArgError.DayNotFound,
     };
+    try io.getStdOut().writer().print("{:0>2} {} {}\n", .{ n, s[0], s[1] });
   }
 }
