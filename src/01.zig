@@ -8,7 +8,7 @@ const toplist = @import("toplist.zig");
 pub fn main() ![2]u64 {
   var maxElves = toplist.Toplist(u64, 3, orderU64){};
   {
-    const file = try fs.cwd().openFile("src/01.txt", .{});
+    const file = try fs.cwd().openFile("input/01.txt", .{});
     defer file.close();
     const reader = file.reader();
 

@@ -10,7 +10,7 @@ pub fn main() ![2]u64 {
   var score0: u64 = 0;
   var score1: u64 = 0;
   {
-    const file = try fs.cwd().openFile("src/02.txt", .{});
+    const file = try fs.cwd().openFile("input/02.txt", .{});
     defer file.close();
     const reader = file.reader();
 

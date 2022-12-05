@@ -10,7 +10,7 @@ pub fn main() ![2]u64 {
   var fullContains: u64 = 0;
   var overlaps: u64 = 0;
   {
-    const file = try fs.cwd().openFile("src/04.txt", .{});
+    const file = try fs.cwd().openFile("input/04.txt", .{});
     defer file.close();
     const reader = file.reader();
 

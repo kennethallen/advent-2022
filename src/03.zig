@@ -12,7 +12,7 @@ pub fn main() ![2]u64 {
   var sumPrios0: u64 = 0;
   var sumPrios1: u64 = 0;
   {
-    const file = try fs.cwd().openFile("src/03.txt", .{});
+    const file = try fs.cwd().openFile("input/03.txt", .{});
     defer file.close();
     const reader = file.reader();
 
