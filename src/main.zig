@@ -24,7 +24,7 @@ pub fn main() !void {
        2 => @import("02.zig").main(),
        3 => @import("03.zig").main(),
        4 => @import("04.zig").main(),
-//       5 => @import("05.zig").main(),
+       5 => @import("05.zig").main(),
 //       6 => @import("06.zig").main(),
 //       7 => @import("07.zig").main(),
 //       8 => @import("08.zig").main(),
