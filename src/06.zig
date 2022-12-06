@@ -41,13 +41,13 @@ fn check(buf: []u8, split: usize) usize {
   var toAdvance: usize = 0;
 
   var n = buf.len - 1;
-  while (n >= lastNew) : (n -= 1) {
-    var m = n - 1;
-    while (true) {
-      if (buf[n] == buf[m])
-        toAdvance = @max(toAdvance, m + 1);
-      if (m == 0) break;
-      m -= 1;
+  while (n >= lastNew and n > toAdvance) : (n -= 1) {
+    var m = n;
+    while (m > toAdvance) : (m -= 1) {
+      if (buf[n] == buf[m - 1]) {
+        toAdvance = m;
+        break;
+      }
     }
   }
 
