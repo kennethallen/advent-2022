@@ -21,7 +21,7 @@ fn findMarker(comptime window: usize) !u64 {
   var total = toAdvance;
 
   while (true) {
-    if (try reader.read(buf[buf.len - toAdvance..]) < toAdvance)
+    if (try reader.readAll(buf[buf.len - toAdvance..]) < toAdvance)
       return Day06Error.InvalidSignal;
     if (buf[buf.len - 1] == '\n')
       return Day06Error.InvalidSignal;
