@@ -29,10 +29,18 @@ const Monkey = struct {
     self.items.deinit(alloc);
   }
 
-  fn inspect(self: *@This(), i: u64) struct { u64, usize } {
+  fn clone(self: @This(), alloc: Allocator) !@This() {
+    var m = self;
+    m.items = try self.items.clone(alloc);
+    return m;
+  }
+
+  fn inspect(self: *@This(), i: u64, divThree: bool, itemMod: u64) struct { u64, usize } {
     self.inspections += 1;
     const arg = self.operand orelse i;
-    const j = switch (self.operation) { .add => i + arg, .mul => i * arg } / 3;
+    var j = switch (self.operation) { .add => i + arg, .mul => i * arg };
+    if (divThree) j /= 3;
+    j %= itemMod;
     return .{ j, if (j % self.divTest == 0) self.trueThrow else self.falseThrow };
   }
 };
@@ -127,21 +135,41 @@ pub fn main() ![2]u64 {
     }
   }
 
+  var itemMod: u64 = 1;
+  for (monkeys.items) |m| itemMod *= m.divTest;
+
+  var monkeys1 = try std.ArrayListUnmanaged(Monkey).initCapacity(alloc, monkeys.items.len);
+  defer monkeys1.deinit(alloc);
+  defer for (monkeys1.items) |*m| m.deinit(alloc);
+  for (monkeys.items) |m| monkeys1.appendAssumeCapacity(try m.clone(alloc));
+
+  return .{
+    try process(alloc, monkeys.items, itemMod, 20, true),
+    try process(alloc, monkeys1.items, itemMod, 10_000, false)
+  };
+}
+
+fn process(
+  alloc: Allocator,
+  monkeys: []Monkey,
+  itemMod: u64,
+  comptime rounds: u64,
+  comptime divThree: bool
+) !u64 {
   var round: u64 = 0;
-  while (round < 20) : (round += 1) {
-    for (monkeys.items) |*m| {
+  while (round < rounds) : (round += 1) {
+    for (monkeys) |*m| {
       for (m.items.items) |i| {
-        const res = m.inspect(i);
-        try monkeys.items[res.@"1"].items.append(alloc, res.@"0");
+        const res = m.inspect(i, divThree, itemMod);
+        try monkeys[res.@"1"].items.append(alloc, res.@"0");
       }
       m.items.clearRetainingCapacity();
     }
   }
 
   var top = toplist.Toplist(u64, 2) {};
-  for (monkeys.items) |m| _ = top.insert(m.inspections);
+  for (monkeys) |m| _ = top.insert(m.inspections);
   var product: u64 = 1;
   for (top.asSlice()) |n| product *= n;
-
-  return .{ product, 0 };
+  return product;
 }
