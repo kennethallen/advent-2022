@@ -13,62 +13,59 @@ const Day09Error = error {
 
 const Dir = enum { l, r, d, u };
 
-const Rope = struct {
-  h: [2]i64 = .{ 0, 0 },
-  t: [2]i64 = .{ 0, 0 },
-  trail: std.AutoHashMapUnmanaged([2]i64, void) = .{},
+fn Rope(comptime n: usize) type {
+  return struct {
+    knots: [n][2]i64 = [_][2]i64 { [2]i64 { 0, 0 } } ** n,
+    trail: std.AutoHashMapUnmanaged([2]i64, void) = .{},
 
-  pub fn init(alloc: Allocator) !@This() {
-    var r = @This() {};
-    try r.trail.put(alloc, r.t, {});
-    return r;
-  }
-
-  pub fn deinit(self: *@This(), alloc: Allocator) void {
-    self.trail.deinit(alloc);
-  }
-
-  pub fn move(self: *@This(), alloc: Allocator, dir: Dir) !void {
-    switch (dir) {
-      .l => {
-        self.h[0] -= 1;
-        if (self.t[0] > self.h[0] + 1) {
-          self.t = .{ self.h[0] + 1, self.h[1] };
-          try self.trail.put(alloc, self.t, {});
-        }
-      },
-      .r => {
-        self.h[0] += 1;
-        if (self.t[0] < self.h[0] - 1) {
-          self.t = .{ self.h[0] - 1, self.h[1] };
-          try self.trail.put(alloc, self.t, {});
-        }
-      },
-      .d => {
-        self.h[1] -= 1;
-        if (self.t[1] > self.h[1] + 1) {
-          self.t = .{ self.h[0], self.h[1] + 1 };
-          try self.trail.put(alloc, self.t, {});
-        }
-      },
-      .u => {
-        self.h[1] += 1;
-        if (self.t[1] < self.h[1] - 1) {
-          self.t = .{ self.h[0], self.h[1] - 1 };
-          try self.trail.put(alloc, self.t, {});
-        }
-      },
+    pub fn init(alloc: Allocator) !@This() {
+      var r = @This() {};
+      try r.trail.put(alloc, r.knots[n - 1], {});
+      return r;
     }
-  }
-};
+
+    pub fn deinit(self: *@This(), alloc: Allocator) void {
+      self.trail.deinit(alloc);
+    }
+
+    pub fn move(self: *@This(), alloc: Allocator, dir: Dir) !void {
+      switch (dir) {
+        .r => self.knots[0][0] += 1,
+        .l => self.knots[0][0] -= 1,
+        .u => self.knots[0][1] += 1,
+        .d => self.knots[0][1] -= 1,
+      }
+      inline for (self.knots[1..]) |*t, i| {
+        const h = self.knots[i];
+        if (t[0] < h[0]-1) t.* = .{ h[0]-1, clampDist(h[1], t[1]) } else
+        if (t[0] > h[0]+1) t.* = .{ h[0]+1, clampDist(h[1], t[1]) } else
+        if (t[1] < h[1]-1) t.* = .{ clampDist(h[0], t[0]), h[1]-1 } else
+        if (t[1] > h[1]+1) t.* = .{ clampDist(h[0], t[0]), h[1]+1 };
+
+        if (i == n - 2)
+          try self.trail.put(alloc, t.*, {});
+      }
+    }
+  };
+}
+
+fn clampDist(h: i64, t: i64) i64 {
+  return switch (math.order(h, t)) {
+    .eq => t,
+    .lt => t - 1,
+    .gt => t + 1,
+  };
+}
 
 pub fn main() ![2]u64 {
   var gpa = heap.GeneralPurposeAllocator(.{}) {};
   defer _ = gpa.deinit();
   const alloc = gpa.allocator();
 
-  var rope = try Rope.init(alloc);
-  defer rope.deinit(alloc);
+  var rope0 = try Rope(2).init(alloc);
+  defer rope0.deinit(alloc);
+  var rope1 = try Rope(10).init(alloc);
+  defer rope1.deinit(alloc);
   {
     const file = try fs.cwd().openFile("input/09.txt", .{});
     defer file.close();
@@ -87,10 +84,12 @@ pub fn main() ![2]u64 {
         else => return Day09Error.InvalidMove,
       };
       var mag = try fmt.parseUnsigned(u64, row[2..], 0);
-      while (mag > 0) : (mag -= 1)
-        try rope.move(alloc, dir);
+      while (mag > 0) : (mag -= 1) {
+        try rope0.move(alloc, dir);
+        try rope1.move(alloc, dir);
+      }
     }
   }
 
-  return .{ rope.trail.count(), 0 };
+  return .{ rope0.trail.count(), rope1.trail.count() };
 }
