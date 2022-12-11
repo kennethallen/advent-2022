@@ -8,17 +8,28 @@ const Allocator = std.mem.Allocator;
 const Day08Error = error {
   InvalidTree,
   UnevenRows,
+  TooSmall,
 };
 
 const VisTracker = struct {
+  trees: [][]const u8,
   vis: []bool,
-  count: u64 = 0,
+  height: usize,
   width: usize,
   sightline: u8 = 0,
+  count: u64 = 0,
 
-  pub fn init(alloc: Allocator, width: usize, height: usize) !@This() {
+  pub fn init(alloc: Allocator, trees: [][]const u8) !@This() {
+    if (trees.len < 2) return Day08Error.TooSmall;
+    const width = trees[0].len;
+    if (width < 2) return Day08Error.TooSmall;
+    for (trees[1..]) |row|
+      if (row.len != width) return Day08Error.UnevenRows;
+
     return .{
-      .vis = try alloc.alloc(bool, width * height),
+      .trees = trees,
+      .vis = try alloc.alloc(bool, width * trees.len),
+      .height = trees.len,
       .width = width,
     };
   }
@@ -27,7 +38,37 @@ const VisTracker = struct {
     alloc.free(self.vis);
   }
 
-  pub fn process(self: *@This(), x: usize, y: usize, tree: u8) bool {
+  pub fn doCount(self: *@This()) void {
+    for (self.trees) |row, y| {
+      var x: u64 = 0;
+      while (x < self.width) : (x += 1)
+        if (self.process(x, y, row[x])) break;
+      self.sightline = 0;
+
+      x = self.width;
+      while (x > 0) {
+        x -= 1;
+        if (self.process(x, y, row[x])) break;
+      }
+      self.sightline = 0;
+    }
+
+    var x: u64 = 0;
+    while (x < self.width) : (x += 1) {
+      for (self.trees) |row, y|
+        if (self.process(x, y, row[x])) break;
+      self.sightline = 0;
+
+      var y: u64 = self.height;
+      while (y > 0) {
+        y -= 1;
+        if (self.process(x, y, self.trees[y][x])) break;
+      }
+      self.sightline = 0;
+    }
+  }
+
+  fn process(self: *@This(), x: usize, y: usize, tree: u8) bool {
     if (tree >= self.sightline) {
       var vis = &self.vis[y*self.width + x];
       if (!vis.*) {
@@ -38,10 +79,6 @@ const VisTracker = struct {
       return self.sightline > 9;
     }
     return false;
-  }
-
-  pub fn reset(self: *@This()) void {
-    self.sightline = 0;
   }
 };
 
@@ -69,40 +106,10 @@ pub fn main() ![2]u64 {
     }
   }
 
-  const height = grid.items.len;
-  const width = grid.items[0].len;
-  for (grid.items[1..]) |row|
-    if (row.len != width) return Day08Error.UnevenRows;
-
-  var vis = try VisTracker.init(alloc, width, height);
+  var vis = try VisTracker.init(alloc, grid.items);
   defer vis.deinit(alloc);
-  for (grid.items) |row, y| {
-    var x: u64 = 0;
-    while (x < width) : (x += 1)
-      if (vis.process(x, y, row[x])) break;
-    vis.reset();
 
-    x = width;
-    while (x > 0) {
-      x -= 1;
-      if (vis.process(x, y, row[x])) break;
-    }
-    vis.reset();
-  }
-
-  var x: u64 = 0;
-  while (x < width) : (x += 1) {
-    for (grid.items) |row, y|
-      if (vis.process(x, y, row[x])) break;
-    vis.reset();
-
-    var y: u64 = height;
-    while (y > 0) {
-      y -= 1;
-      if (vis.process(x, y, grid.items[y][x])) break;
-    }
-    vis.reset();
-  }
+  vis.doCount();
 
   return .{ vis.count, 0 };
 }
