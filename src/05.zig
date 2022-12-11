@@ -89,7 +89,7 @@ pub fn main() ![2]u64 {
           const toS = &stacks1.items[to - 1];
           const fromBreak = fromS.items.len - n;
           try toS.appendSlice(fromS.items[fromBreak..]);
-          try fromS.resize(fromBreak);
+          fromS.shrinkRetainingCapacity(fromBreak);
         }
 
         {
