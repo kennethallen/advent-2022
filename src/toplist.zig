@@ -2,9 +2,7 @@ const std = @import("std");
 const math = std.math;
 const mem = std.mem;
 
-pub fn Toplist(comptime T: type, comptime size: usize,
-  comptime compareFn: fn (lhs: T, rhs: T) math.Order) type {
-    _ = compareFn;
+pub fn Toplist(comptime T: type, comptime size: usize) type {
   return struct {
     const Self = @This();
     items: [size]T = undefined,
