@@ -145,7 +145,7 @@ pub fn main() ![2]u64 {
 
   return .{
     try process(alloc, monkeys.items, itemMod, 20, true),
-    try process(alloc, monkeys1.items, itemMod, 10_000, false)
+    try process(alloc, monkeys1.items, itemMod, 10_000, false),
   };
 }
 
@@ -154,7 +154,7 @@ fn process(
   monkeys: []Monkey,
   itemMod: u64,
   comptime rounds: u64,
-  comptime divThree: bool
+  comptime divThree: bool,
 ) !u64 {
   var round: u64 = 0;
   while (round < rounds) : (round += 1) {
