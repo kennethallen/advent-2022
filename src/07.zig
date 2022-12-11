@@ -3,6 +3,7 @@ const fmt = std.fmt;
 const fs = std.fs;
 const heap = std.heap;
 const io = std.io;
+const math = std.math;
 const mem = std.mem;
 
 const Allocator = mem.Allocator;
@@ -35,18 +36,39 @@ const Dir = struct {
 
     var vals = self.children.valueIterator();
     while (vals.next()) |val| switch (val.*) {
-      Inode.dir => |d| {
+      .dir => |d| {
         const res = d.sumSmall();
         mySize += res[0];
         smallChildrenSum += res[1];
       },
-      Inode.file => |f| mySize += f,
+      .file => |f| mySize += f,
     };
     
     if (mySize <= 100_000)
       smallChildrenSum += mySize;
 
     return .{ mySize, smallChildrenSum };
+  }
+
+  fn minDir(self: @This(), limit: u64) [2]u64 {
+    var mySize: u64 = 0;
+    var candidate: u64 = math.maxInt(u64);
+
+    var vals = self.children.valueIterator();
+    while (vals.next()) |val| switch (val.*) {
+      .dir => |d| {
+        const res = d.minDir(limit);
+        mySize += res[0];
+        if (res[1] < candidate)
+          candidate = res[1];
+      },
+      .file => |f| mySize += f,
+    };
+    
+    if (mySize >= limit and mySize < candidate)
+      candidate = mySize;
+
+    return .{ mySize, candidate };
   }
 
   pub fn lsDir(self: *@This(), alloc: Allocator, ownedDir: []u8) !*Dir {
@@ -190,5 +212,7 @@ pub fn main() ![2]u64 {
     }
   }
 
-  return .{ myFs.root().sumSmall()[1], 0 };
+  const sumSmall = myFs.root().sumSmall();
+  const freeSpace = 70_000_000 - sumSmall[0];
+  return .{ sumSmall[1], myFs.root().minDir(30_000_000 - freeSpace)[1] };
 }
