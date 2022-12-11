@@ -17,7 +17,7 @@ const VisTracker = struct {
   height: usize,
   width: usize,
   sightline: u8 = 0,
-  count: u64 = 0,
+  count: u64 = undefined,
 
   pub fn init(alloc: Allocator, trees: [][]const u8) !@This() {
     if (trees.len < 2) return Day08Error.TooSmall;
@@ -39,22 +39,24 @@ const VisTracker = struct {
   }
 
   pub fn doCount(self: *@This()) void {
-    for (self.trees) |row, y| {
+    self.count = 4; // Corners
+
+    for (self.trees[1..self.height-1]) |row, y| {
       var x: u64 = 0;
       while (x < self.width) : (x += 1)
-        if (self.process(x, y, row[x])) break;
+        if (self.process(x, y+1, row[x])) break;
       self.sightline = 0;
 
       x = self.width;
       while (x > 0) {
         x -= 1;
-        if (self.process(x, y, row[x])) break;
+        if (self.process(x, y+1, row[x])) break;
       }
       self.sightline = 0;
     }
 
-    var x: u64 = 0;
-    while (x < self.width) : (x += 1) {
+    var x: u64 = 1;
+    while (x < self.width-1) : (x += 1) {
       for (self.trees) |row, y|
         if (self.process(x, y, row[x])) break;
       self.sightline = 0;
