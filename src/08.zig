@@ -38,39 +38,42 @@ const VisTracker = struct {
     alloc.free(self.vis);
   }
 
-  pub fn doCount(self: *@This()) void {
+  pub fn doCount(self: *@This()) u64 {
     self.count = 4; // Corners
 
-    for (self.trees[1..self.height-1]) |row, y| {
+    for (self.trees[1..self.height-1]) |_, y| {
       var x: u64 = 0;
       while (x < self.width) : (x += 1)
-        if (self.process(x, y+1, row[x])) break;
+        if (self.process(x, y+1)) break;
       self.sightline = 0;
 
       x = self.width;
       while (x > 0) {
         x -= 1;
-        if (self.process(x, y+1, row[x])) break;
+        if (self.process(x, y+1)) break;
       }
       self.sightline = 0;
     }
 
     var x: u64 = 1;
     while (x < self.width-1) : (x += 1) {
-      for (self.trees) |row, y|
-        if (self.process(x, y, row[x])) break;
+      for (self.trees) |_, y|
+        if (self.process(x, y)) break;
       self.sightline = 0;
 
       var y: u64 = self.height;
       while (y > 0) {
         y -= 1;
-        if (self.process(x, y, self.trees[y][x])) break;
+        if (self.process(x, y)) break;
       }
       self.sightline = 0;
     }
+
+    return self.count;
   }
 
-  fn process(self: *@This(), x: usize, y: usize, tree: u8) bool {
+  fn process(self: *@This(), x: usize, y: usize) bool {
+    const tree = self.trees[y][x];
     if (tree >= self.sightline) {
       var vis = &self.vis[y*self.width + x];
       if (!vis.*) {
@@ -81,6 +84,52 @@ const VisTracker = struct {
       return self.sightline > 9;
     }
     return false;
+  }
+
+  fn scoreTree(self: @This(), x: usize, y: usize) u64 {
+    const tree = self.trees[y][x];
+    // Right
+    var checkDist: u64 = 0;
+    while (checkDist + 1 < self.width - x) {
+      checkDist += 1;
+      if (self.trees[y][x + checkDist] >= tree) break;
+    }
+    var prod = checkDist;
+    // Left
+    checkDist = 0;
+    while (checkDist + 1 <= x) {
+      checkDist += 1;
+      if (self.trees[y][x - checkDist] >= tree) break;
+    }
+    prod *= checkDist;
+    // Down
+    checkDist = 0;
+    while (checkDist + 1 < self.height - y) {
+      checkDist += 1;
+      if (self.trees[y + checkDist][x] >= tree) break;
+    }
+    prod *= checkDist;
+    // Up
+    checkDist = 0;
+    while (checkDist + 1 <= y) {
+      checkDist += 1;
+      if (self.trees[y - checkDist][x] >= tree) break;
+    }
+    prod *= checkDist;
+    return prod;
+  }
+
+  fn maxScore(self: @This()) u64 {
+    var max: u64 = 0;
+    var x: usize = 0;
+    while (x < self.width) : (x += 1) {
+      var y: usize = 0;
+      while (y < self.height) : (y += 1) {
+        const score = self.scoreTree(x, y);
+        if (score > max) max = score;
+      }
+    }
+    return max;
   }
 };
 
@@ -111,7 +160,5 @@ pub fn main() ![2]u64 {
   var vis = try VisTracker.init(alloc, grid.items);
   defer vis.deinit(alloc);
 
-  vis.doCount();
-
-  return .{ vis.count, 0 };
+  return .{ vis.doCount(), vis.maxScore() };
 }
