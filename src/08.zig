@@ -3,9 +3,46 @@ const fs = std.fs;
 const heap = std.heap;
 const io = std.io;
 
+const Allocator = std.mem.Allocator;
+
 const Day08Error = error {
   InvalidTree,
   UnevenRows,
+};
+
+const VisTracker = struct {
+  vis: []bool,
+  count: u64 = 0,
+  width: usize,
+  sightline: u8 = 0,
+
+  pub fn init(alloc: Allocator, width: usize, height: usize) !@This() {
+    return .{
+      .vis = try alloc.alloc(bool, width * height),
+      .width = width,
+    };
+  }
+
+  pub fn deinit(self: @This(), alloc: Allocator) void {
+    alloc.free(self.vis);
+  }
+
+  pub fn process(self: *@This(), x: usize, y: usize, tree: u8) bool {
+    if (tree >= self.sightline) {
+      var vis = &self.vis[y*self.width + x];
+      if (!vis.*) {
+        vis.* = true;
+        self.count += 1;
+      }
+      self.sightline = tree + 1;
+      return self.sightline > 9;
+    }
+    return false;
+  }
+
+  pub fn reset(self: *@This()) void {
+    self.sightline = 0;
+  }
 };
 
 pub fn main() ![2]u64 {
@@ -37,74 +74,35 @@ pub fn main() ![2]u64 {
   for (grid.items[1..]) |row|
     if (row.len != width) return Day08Error.UnevenRows;
 
-  var visibility = try alloc.alloc(bool, height * width);
-  defer alloc.free(visibility);
-  var visCount: u64 = 0;
+  var vis = try VisTracker.init(alloc, width, height);
+  defer vis.deinit(alloc);
   for (grid.items) |row, y| {
     var x: u64 = 0;
-    var sightline: u8 = 0;
-    while (x < width) : (x += 1) {
-      const tree = row[x];
-      if (tree >= sightline) {
-        var vis = &visibility[y*width + x];
-        if (!vis.*) {
-          vis.* = true;
-          visCount += 1;
-        }
-        sightline = tree + 1;
-        if (sightline > 9) break;
-      }
-    }
+    while (x < width) : (x += 1)
+      if (vis.process(x, y, row[x])) break;
+    vis.reset();
 
-    sightline = 0;
     x = width;
     while (x > 0) {
       x -= 1;
-      const tree = row[x];
-      if (tree >= sightline) {
-        var vis = &visibility[y*width + x];
-        if (!vis.*) {
-          vis.* = true;
-          visCount += 1;
-        }
-        sightline = tree + 1;
-        if (sightline > 9) break;
-      }
+      if (vis.process(x, y, row[x])) break;
     }
+    vis.reset();
   }
 
   var x: u64 = 0;
   while (x < width) : (x += 1) {
-    var sightline: u8 = 0;
-    for (grid.items) |row, y| {
-      const tree = row[x];
-      if (tree >= sightline) {
-        var vis = &visibility[y*width + x];
-        if (!vis.*) {
-          vis.* = true;
-          visCount += 1;
-        }
-        sightline = tree + 1;
-        if (sightline > 9) break;
-      }
-    }
+    for (grid.items) |row, y|
+      if (vis.process(x, y, row[x])) break;
+    vis.reset();
 
-    sightline = 0;
     var y: u64 = height;
     while (y > 0) {
       y -= 1;
-      const tree = grid.items[y][x];
-      if (tree >= sightline) {
-        var vis = &visibility[y*width + x];
-        if (!vis.*) {
-          vis.* = true;
-          visCount += 1;
-        }
-        sightline = tree + 1;
-        if (sightline > 9) break;
-      }
+      if (vis.process(x, y, grid.items[y][x])) break;
     }
+    vis.reset();
   }
 
-  return .{ visCount, 0 };
+  return .{ vis.count, 0 };
 }
