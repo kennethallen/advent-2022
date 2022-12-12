@@ -2,13 +2,11 @@ const std = @import("std");
 const fmt = std.fmt;
 const fs = std.fs;
 const heap = std.heap;
-const io = std.io;
-const math = std.math;
 const mem = std.mem;
 
 const toplist = @import("toplist.zig");
 
-const Allocator = std.mem.Allocator;
+const Allocator = mem.Allocator;
 
 const Day11Error = error {
   InvalidMonkey,
@@ -35,13 +33,17 @@ const Monkey = struct {
     return m;
   }
 
-  fn inspect(self: *@This(), i: u64, divThree: bool, itemMod: u64) struct { u64, usize } {
+  const InspectResult = struct { worry: u64, throwTo: usize };
+  fn inspect(self: *@This(), i: u64, comptime part2: bool, itemMod: u64) InspectResult {
     self.inspections += 1;
     const arg = self.operand orelse i;
     var j = switch (self.operation) { .add => i + arg, .mul => i * arg };
-    if (divThree) j /= 3;
-    j %= itemMod;
-    return .{ j, if (j % self.divTest == 0) self.trueThrow else self.falseThrow };
+    if (!part2) j /= 3;
+    if (part2) j %= itemMod;
+    return .{
+      .worry = j,
+      .throwTo = if (j % self.divTest == 0) self.trueThrow else self.falseThrow,
+    };
   }
 };
 
@@ -144,8 +146,8 @@ pub fn main() ![2]u64 {
   for (monkeys.items) |m| monkeys1.appendAssumeCapacity(try m.clone(alloc));
 
   return .{
-    try process(alloc, monkeys.items, itemMod, 20, true),
-    try process(alloc, monkeys1.items, itemMod, 10_000, false),
+    try process(alloc, monkeys.items, itemMod, 20, false),
+    try process(alloc, monkeys1.items, itemMod, 10_000, true),
   };
 }
 
@@ -154,14 +156,14 @@ fn process(
   monkeys: []Monkey,
   itemMod: u64,
   comptime rounds: u64,
-  comptime divThree: bool,
+  comptime part2: bool,
 ) !u64 {
   var round: u64 = 0;
   while (round < rounds) : (round += 1) {
     for (monkeys) |*m| {
       for (m.items.items) |i| {
-        const res = m.inspect(i, divThree, itemMod);
-        try monkeys[res.@"1"].items.append(alloc, res.@"0");
+        const res = m.inspect(i, part2, itemMod);
+        try monkeys[res.throwTo].items.append(alloc, res.worry);
       }
       m.items.clearRetainingCapacity();
     }
