@@ -113,25 +113,25 @@ fn pathfindExplore(ctx: AStarCtx, x: [2]usize, buf: *std.ArrayList(a_star.Explor
 
   // Left
   if (x[0] > 0) {
-    const l: [2]usize = .{ x[0]-1, x[1] };
+    const l = [2]usize { x[0]-1, x[1] };
     if (ctx.grid[l[1]][l[0]] <= heightLimit)
       try buf.append(.{ .pos = l, .edgeCost = 1 });
   }
   // Right
   if (x[0] < ctx.width-1) {
-    const r: [2]usize = .{ x[0]+1, x[1] };
+    const r = [2]usize { x[0]+1, x[1] };
     if (ctx.grid[r[1]][r[0]] <= heightLimit)
       try buf.append(.{ .pos = r, .edgeCost = 1 });
   }
   // Up
   if (x[1] > 0) {
-    const u: [2]usize = .{ x[0], x[1]-1 };
+    const u = [2]usize { x[0], x[1]-1 };
     if (ctx.grid[u[1]][u[0]] <= heightLimit)
       try buf.append(.{ .pos = u, .edgeCost = 1 });
   }
   // Down
   if (x[1] < ctx.height-1) {
-    const d: [2]usize = .{ x[0], x[1]+1 };
+    const d = [2]usize { x[0], x[1]+1 };
     if (ctx.grid[d[1]][d[0]] <= heightLimit)
       try buf.append(.{ .pos = d, .edgeCost = 1 });
   }
@@ -150,25 +150,25 @@ fn dijkstraExplore(ctx: DijkstraCtx, x: [2]usize, buf: *std.ArrayList(a_star.Exp
 
   // Left
   if (x[0] > 0) {
-    const l: [2]usize = .{ x[0]-1, x[1] };
+    const l = [2]usize { x[0]-1, x[1] };
     if (ctx.grid[l[1]][l[0]] >= heightMin)
       try buf.append(.{ .pos = l, .edgeCost = 1 });
   }
   // Right
   if (x[0] < ctx.width-1) {
-    const r: [2]usize = .{ x[0]+1, x[1] };
+    const r = [2]usize { x[0]+1, x[1] };
     if (ctx.grid[r[1]][r[0]] >= heightMin)
       try buf.append(.{ .pos = r, .edgeCost = 1 });
   }
   // Up
   if (x[1] > 0) {
-    const u: [2]usize = .{ x[0], x[1]-1 };
+    const u = [2]usize { x[0], x[1]-1 };
     if (ctx.grid[u[1]][u[0]] >= heightMin)
       try buf.append(.{ .pos = u, .edgeCost = 1 });
   }
   // Down
   if (x[1] < ctx.height-1) {
-    const d: [2]usize = .{ x[0], x[1]+1 };
+    const d = [2]usize { x[0], x[1]+1 };
     if (ctx.grid[d[1]][d[0]] >= heightMin)
       try buf.append(.{ .pos = d, .edgeCost = 1 });
   }
