@@ -107,6 +107,7 @@ fn aStar(
 
   var visited = try alloc.alloc(bool, width*height);
   defer alloc.free(visited);
+  mem.set(bool, visited, false);
 
   while (toVisit.removeOrNull()) |n| {
     {
@@ -171,6 +172,7 @@ fn dijkstra(
 
   var visited = try alloc.alloc(bool, width*height);
   defer alloc.free(visited);
+  mem.set(bool, visited, false);
 
   while (toVisit.removeOrNull()) |n| {
     {
