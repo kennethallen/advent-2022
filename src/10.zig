@@ -6,7 +6,7 @@ const io = std.io;
 const math = std.math;
 const mem = std.mem;
 
-const Allocator = std.mem.Allocator;
+const Allocator = mem.Allocator;
 
 const Day10Error = error {
   InvalidInstruction,

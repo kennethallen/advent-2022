@@ -4,8 +4,9 @@ const fs = std.fs;
 const heap = std.heap;
 const io = std.io;
 const math = std.math;
+const mem = std.mem;
 
-const Allocator = std.mem.Allocator;
+const Allocator = mem.Allocator;
 
 const Day09Error = error {
   InvalidMove,
