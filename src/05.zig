@@ -54,7 +54,6 @@ pub fn main() ![2]u64 {
             if (stack.items.len > 0)
               return Day05Error.InvalidStacks;
           } else {
-            std.debug.print("{s}", .{ line });
             return Day05Error.InvalidStacks;
           }
         }
