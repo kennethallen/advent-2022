@@ -6,6 +6,8 @@ const io = std.io;
 const math = std.math;
 const mem = std.mem;
 
+const a_star = @import("a_star.zig");
+
 const Allocator = mem.Allocator;
 
 const Day12Error = error {
@@ -69,146 +71,105 @@ pub fn main() ![2]u64 {
       return Day12Error.NoStart;
   };
 
+  const width = grid.items[0].len;
+  const height = grid.items.len;
+
   return .{
-    try aStar(alloc, ends[0], ends[1], grid.items),
-    try dijkstra(alloc, ends[1], grid.items),
+    try a_star.aStar(
+      [2]usize,
+      usize,
+      AStarCtx { .end = ends[1], .grid = grid.items, .width = width, .height = height },
+      alloc,
+      ends[0],
+      pathfindHeur,
+      pathfindExplore,
+    ),
+    try a_star.aStar(
+      [2]usize,
+      usize,
+      DijkstraCtx { .grid = grid.items, .width = width, .height = height },
+      alloc,
+      ends[1],
+      dijkstraHeur,
+      dijkstraExplore,
+    ),
   };
 }
 
-fn heur(a: [2]usize, b: [2]usize) usize {
-  // Taxicab distance
-  return (if (a[0] > b[0]) a[0] - b[0] else b[0] - a[0])
-    + (if (a[1] > b[1]) a[1] - b[1] else b[1] - a[1]);
-}
-
-const AStarNode = struct {
-  coord: [2]usize,
-  knownCost: usize,
-  estTotalCost: usize,
-
-  fn priorityCompare(_: void, a: @This(), b: @This()) math.Order {
-    return math.order(a.estTotalCost, b.estTotalCost);
-  }
-};
-
-fn aStar(
-  alloc: Allocator,
-  start: [2]usize,
+const AStarCtx = struct {
   end: [2]usize,
-  heights: [][]const u8,
-) !usize {
-  const width = heights[0].len;
-  const height = heights.len;
+  grid: [][]const u8,
+  width: usize,
+  height: usize,
+};
+fn pathfindHeur(ctx: AStarCtx, a: [2]usize) ?usize {
+  // Taxicab distance
+  const d = (if (a[0] > ctx.end[0]) a[0] - ctx.end[0] else ctx.end[0] - a[0])
+    + (if (a[1] > ctx.end[1]) a[1] - ctx.end[1] else ctx.end[1] - a[1]);
+  return if (d == 0) null else d;
+}
+fn pathfindExplore(ctx: AStarCtx, x: [2]usize, buf: *std.ArrayList(a_star.Explore([2]usize, usize))) !void {
+  const heightLimit = 1 + ctx.grid[x[1]][x[0]];
 
-  var toVisit = std.PriorityQueue(AStarNode, void, AStarNode.priorityCompare).init(alloc, {});
-  defer toVisit.deinit();
-  // Init with start
-  try toVisit.add(.{ .coord = start, .knownCost = 0, .estTotalCost = heur(start, end) });
-
-  var visited = try alloc.alloc(bool, width*height);
-  defer alloc.free(visited);
-  mem.set(bool, visited, false);
-
-  while (toVisit.removeOrNull()) |n| {
-    {
-      var nodeVisited = &visited[n.coord[0] + n.coord[1]*width];
-      if (nodeVisited.*) continue;
-      nodeVisited.* = true;
-    }
-
-    if (mem.eql(usize, &n.coord, &end)) return n.knownCost;
-
-    const heightLimit = 1 + heights[n.coord[1]][n.coord[0]];
-
-    // Left
-    if (n.coord[0] > 0) {
-      const l: [2]usize = .{ n.coord[0]-1, n.coord[1] };
-      if (heights[l[1]][l[0]] <= heightLimit and !visited[l[0] + l[1]*width])
-        try toVisit.add(.{ .coord = l, .knownCost = n.knownCost+1, .estTotalCost = n.knownCost+1+heur(l, end) });
-    }
-    // Right
-    if (n.coord[0] < width-1) {
-      const r: [2]usize = .{ n.coord[0]+1, n.coord[1] };
-      if (heights[r[1]][r[0]] <= heightLimit and !visited[r[0] + r[1]*width])
-        try toVisit.add(.{ .coord = r, .knownCost = n.knownCost+1, .estTotalCost = n.knownCost+1+heur(r, end) });
-    }
-    // Down
-    if (n.coord[1] > 0) {
-      const u: [2]usize = .{ n.coord[0], n.coord[1]-1 };
-      if (heights[u[1]][u[0]] <= heightLimit and !visited[u[0] + u[1]*width])
-        try toVisit.add(.{ .coord = u, .knownCost = n.knownCost+1, .estTotalCost = n.knownCost+1+heur(u, end) });
-    }
-    // Right
-    if (n.coord[1] < height-1) {
-      const d: [2]usize = .{ n.coord[0], n.coord[1]+1 };
-      if (heights[d[1]][d[0]] <= heightLimit and !visited[d[0] + d[1]*width])
-        try toVisit.add(.{ .coord = d, .knownCost = n.knownCost+1, .estTotalCost = n.knownCost+1+heur(d, end) });
-    }
+  // Left
+  if (x[0] > 0) {
+    const l: [2]usize = .{ x[0]-1, x[1] };
+    if (ctx.grid[l[1]][l[0]] <= heightLimit)
+      try buf.append(.{ .pos = l, .edgeCost = 1 });
   }
-  return Day12Error.NoPath;
+  // Right
+  if (x[0] < ctx.width-1) {
+    const r: [2]usize = .{ x[0]+1, x[1] };
+    if (ctx.grid[r[1]][r[0]] <= heightLimit)
+      try buf.append(.{ .pos = r, .edgeCost = 1 });
+  }
+  // Up
+  if (x[1] > 0) {
+    const u: [2]usize = .{ x[0], x[1]-1 };
+    if (ctx.grid[u[1]][u[0]] <= heightLimit)
+      try buf.append(.{ .pos = u, .edgeCost = 1 });
+  }
+  // Down
+  if (x[1] < ctx.height-1) {
+    const d: [2]usize = .{ x[0], x[1]+1 };
+    if (ctx.grid[d[1]][d[0]] <= heightLimit)
+      try buf.append(.{ .pos = d, .edgeCost = 1 });
+  }
 }
 
-const DijkstraNode = struct {
-  coord: [2]usize,
-  knownCost: usize,
-
-  fn priorityCompare(_: void, a: @This(), b: @This()) math.Order {
-    return math.order(a.knownCost, b.knownCost);
-  }
+const DijkstraCtx = struct {
+  grid: [][]const u8,
+  width: usize,
+  height: usize,
 };
+fn dijkstraHeur(ctx: DijkstraCtx, a: [2]usize) ?usize {
+  return if (ctx.grid[a[1]][a[0]] == 0) null else 0;
+}
+fn dijkstraExplore(ctx: DijkstraCtx, x: [2]usize, buf: *std.ArrayList(a_star.Explore([2]usize, usize))) !void {
+  const heightMin = ctx.grid[x[1]][x[0]] - 1;
 
-fn dijkstra(
-  alloc: Allocator,
-  start: [2]usize,
-  heights: [][]const u8,
-) !usize {
-  const width = heights[0].len;
-  const height = heights.len;
-
-  var toVisit = std.PriorityQueue(DijkstraNode, void, DijkstraNode.priorityCompare).init(alloc, {});
-  defer toVisit.deinit();
-  // Init with start
-  try toVisit.add(.{ .coord = start, .knownCost = 0 });
-
-  var visited = try alloc.alloc(bool, width*height);
-  defer alloc.free(visited);
-  mem.set(bool, visited, false);
-
-  while (toVisit.removeOrNull()) |n| {
-    {
-      var nodeVisited = &visited[n.coord[0] + n.coord[1]*width];
-      if (nodeVisited.*) continue;
-      nodeVisited.* = true;
-    }
-
-    const cellHeight = heights[n.coord[1]][n.coord[0]];
-    if (cellHeight == 0) return n.knownCost;
-    const heightMin = cellHeight - 1;
-
-    // Left
-    if (n.coord[0] > 0) {
-      const l: [2]usize = .{ n.coord[0]-1, n.coord[1] };
-      if (heights[l[1]][l[0]] >= heightMin and !visited[l[0] + l[1]*width])
-        try toVisit.add(.{ .coord = l, .knownCost = n.knownCost+1 });
-    }
-    // Right
-    if (n.coord[0] < width-1) {
-      const r: [2]usize = .{ n.coord[0]+1, n.coord[1] };
-      if (heights[r[1]][r[0]] >= heightMin and !visited[r[0] + r[1]*width])
-        try toVisit.add(.{ .coord = r, .knownCost = n.knownCost+1 });
-    }
-    // Down
-    if (n.coord[1] > 0) {
-      const u: [2]usize = .{ n.coord[0], n.coord[1]-1 };
-      if (heights[u[1]][u[0]] >= heightMin and !visited[u[0] + u[1]*width])
-        try toVisit.add(.{ .coord = u, .knownCost = n.knownCost+1 });
-    }
-    // Right
-    if (n.coord[1] < height-1) {
-      const d: [2]usize = .{ n.coord[0], n.coord[1]+1 };
-      if (heights[d[1]][d[0]] >= heightMin and !visited[d[0] + d[1]*width])
-        try toVisit.add(.{ .coord = d, .knownCost = n.knownCost+1 });
-    }
+  // Left
+  if (x[0] > 0) {
+    const l: [2]usize = .{ x[0]-1, x[1] };
+    if (ctx.grid[l[1]][l[0]] >= heightMin)
+      try buf.append(.{ .pos = l, .edgeCost = 1 });
   }
-  return Day12Error.NoPath;
+  // Right
+  if (x[0] < ctx.width-1) {
+    const r: [2]usize = .{ x[0]+1, x[1] };
+    if (ctx.grid[r[1]][r[0]] >= heightMin)
+      try buf.append(.{ .pos = r, .edgeCost = 1 });
+  }
+  // Up
+  if (x[1] > 0) {
+    const u: [2]usize = .{ x[0], x[1]-1 };
+    if (ctx.grid[u[1]][u[0]] >= heightMin)
+      try buf.append(.{ .pos = u, .edgeCost = 1 });
+  }
+  // Down
+  if (x[1] < ctx.height-1) {
+    const d: [2]usize = .{ x[0], x[1]+1 };
+    if (ctx.grid[d[1]][d[0]] >= heightMin)
+      try buf.append(.{ .pos = d, .edgeCost = 1 });
+  }
 }
