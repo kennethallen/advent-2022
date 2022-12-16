@@ -14,13 +14,16 @@ const Day14Error = error {
   EntranceBlocked,
 };
 
+const Cell = enum { empty, rock, sand };
+
 pub fn main() ![2]u64 {
   var gpa = heap.GeneralPurposeAllocator(.{}) {};
   defer _ = gpa.deinit();
   const alloc = gpa.allocator();
 
-  var fill = std.AutoHashMapUnmanaged([2]usize, bool) {};
-  defer fill.deinit(alloc);
+  var walls = std.ArrayListUnmanaged(std.ArrayListUnmanaged([2]usize)) {};
+  defer walls.deinit(alloc);
+  defer for (walls.items) |*w| w.deinit(alloc);
   {
     const file = try fs.cwd().openFile("input/14.txt", .{});
     defer file.close();
@@ -29,90 +32,147 @@ pub fn main() ![2]u64 {
     var buf: [500]u8 = undefined;
 
     while (try reader.readUntilDelimiterOrEof(&buf, '\n')) |line| {
+      var wall = std.ArrayListUnmanaged([2]usize) {};
+      errdefer wall.deinit(alloc);
+
       var j: usize = 1;
       while (line[j] != ',') j += 1;
-      var p0 = [2]usize { try fmt.parseUnsigned(usize, line[0..j], 0), undefined };
-      var i: usize = j + 1;
-      while (i < line.len and line[i] != ' ') i += 1;
-      p0[1] = try fmt.parseUnsigned(usize, line[j+1..i], 0);
+      var k = j + 1;
+      while (k < line.len and line[k] != ' ') k += 1;
+      try wall.append(alloc, .{
+        try fmt.parseUnsigned(usize, line[0..j], 0),
+        try fmt.parseUnsigned(usize, line[j+1..k], 0),
+      });
 
-      try fill.put(alloc, p0, true);
-
-      while (i < line.len) {
-        if (!mem.eql(u8, line[i+1..i+4], "-> ")) return Day14Error.BadDelimiter;
-        i += 4;
+      while (k < line.len) {
+        if (!mem.eql(u8, line[k+1..k+4], "-> ")) return Day14Error.BadDelimiter;
+        var i = k + 4;
         j = i + 1;
         while (line[j] != ',') j += 1;
-        var p1 = [2]usize { try fmt.parseUnsigned(usize, line[i..j], 0), undefined };
-        i = j + 1;
-        while (i < line.len and line[i] != ' ') i += 1;
-        p1[1] = try fmt.parseUnsigned(usize, line[j+1..i], 0);
-        
-        if (p0[0] == p1[0]) {
-          var y = p0[1];
-          if (p0[1] < p1[1])
-            while (y <= p1[1]) : (y += 1)
-              try fill.put(alloc, .{ p0[0], y }, true)
-          else
-            while (y >= p1[1]) : (y -= 1)
-              try fill.put(alloc, .{ p0[0], y }, true);
-        } else if (p0[1] == p1[1]) {
-          var x = p0[0];
-          if (p0[0] < p1[0])
-            while (x <= p1[0]) : (x += 1)
-              try fill.put(alloc, .{ x, p0[1] }, true)
-          else
-            while (x >= p1[0]) : (x -= 1)
-              try fill.put(alloc, .{ x, p0[1] }, true);
-        } else
-          return Day14Error.BadLine;
-        p0 = p1;
+        k = j + 1;
+        while (k < line.len and line[k] != ' ') k += 1;
+        try wall.append(alloc, .{
+          try fmt.parseUnsigned(usize, line[i..j], 0),
+          try fmt.parseUnsigned(usize, line[j+1..k], 0),
+        });
       }
+
+      try walls.append(alloc, wall);
     }
   }
 
-  var floor: usize = 0;
-  {
-    var rocks = fill.keyIterator();
-    while (rocks.next()) |rock| {
-      if (rock[1] > floor) floor = rock[1];
+  //for (walls.items) |wall| {
+    //std.debug.print("{},{}", .{wall.items[0][0], wall.items[0][1]});
+    //for (wall.items[1..]) |c| {
+      //std.debug.print(" -> {},{}", .{c[0], c[1]});
+    //}
+    //std.debug.print("\n", .{});
+  //}
+
+  var minX: usize = math.maxInt(usize);
+  var maxX: usize = 0;
+  var maxY: usize = 0;
+  for (walls.items) |wall|
+    for (wall.items) |c| {
+      if (c[0] < minX) minX = c[0];
+      if (c[0] > maxX) maxX = c[0];
+      if (c[1] > maxY) maxY = c[1];
+    };
+  const xOffset = minX - 1;
+  const width = maxX - minX + 2;
+  const height = maxY + 1;
+  std.debug.print("xOffset {} width {} height {}\n", .{xOffset, width, height});
+
+  var grid = try alloc.alloc(Cell, width*height);
+  defer alloc.free(grid);
+  mem.set(Cell, grid, .empty);
+
+  for (walls.items) |wall| {
+    for (wall.items) |*c| c[0] -= xOffset;
+
+    for (wall.items[0..wall.items.len-1]) |c0, i| {
+      const c1 = wall.items[i+1];
+
+      if (c0[0] == c1[0]) { // Vertical
+        var y = c0[1];
+        if (c0[1] < c1[1]) { // Down
+          std.debug.print("Down {}x{} {},{} {},{} {},{}\n", .{width, height, c0[0], y, c0[0], c0[1], c1[0], c1[1]});
+          while (y < c1[1]) : (y += 1) {
+            grid[c0[0] + y*width] = .rock;
+          }
+        } else { // Up
+          std.debug.print("Up {}x{} {},{} {},{} {},{}\n", .{width, height, c0[0], y, c0[0], c0[1], c1[0], c1[1]});
+          while (y > c1[1]) : (y -= 1) {
+            grid[c0[0] + y*width] = .rock;
+          }
+        }
+      } else if (c0[1] == c1[1]) { // Horizontal
+        if (c0[0] < c1[0]) { // Right
+          std.debug.print("{}x{} {},{} {},{}\n", .{width, height, c0[0], c0[1], c1[0], c1[1]});
+          std.debug.print("Right {}-{}\n", .{c0[1]*width+c0[0], c0[1]*width+c1[0]});
+          mem.set(Cell, grid[c0[1]*width..][c0[0]..c1[0]], .rock);
+        } else { // Left
+          std.debug.print("{}x{} {},{} {},{}\n", .{width, height, c0[0], c0[1], c1[0], c1[1]});
+          std.debug.print("Left {}-{}\n", .{c0[1]*width+c1[0]+1, c0[1]*width+c0[0]+1});
+          mem.set(Cell, grid[c0[1]*width..][c1[0]+1..c0[0]+1], .rock);
+        }
+      } else
+        return Day14Error.BadLine;
+    }
+
+    const cEnd = wall.items[wall.items.len-1];
+    grid[cEnd[0] + width*cEnd[1]] = .rock;
+  }
+
+  // test
+  for (walls.items) |wall| {
+    for (wall.items) |c| {
+      if (grid[c[0] + width*c[1]] != .rock)
+        std.debug.print("No rock {},{}\n", .{c[0],c[1]});
     }
   }
+  //{
+    //var px: usize = 0;
+    //while (px < width) : (px += 1) {
+      //var py: usize = 0;
+      //while (py < height) : (py += 1) {
+        //const shouldBeRock = slow: {
+          //for (walls.items) |wall| {
+            
+          //}
+        //};
+      //}
+    //}
+  //}
 
   var sand: usize = 0;
   pour: while (true) : (sand += 1) {
-    var x = [2]usize { 500, 0 };
-    if (fill.contains(x)) return Day14Error.EntranceBlocked;
+    var s = [2]usize { 500-xOffset, 0 };
+    if (grid[s[0] + s[1]*width] != .empty) return Day14Error.EntranceBlocked;
     while (true) {
-      if (!fill.contains(.{ x[0], x[1]+1 })) {}
-      else if (!fill.contains(.{ x[0]-1, x[1]+1 })) x[0] -= 1
-      else if (!fill.contains(.{ x[0]+1, x[1]+1 })) x[0] += 1
+      if (grid[s[0] + (s[1]+1)*width] == .empty) {}
+      else if (grid[s[0]-1 + (s[1]+1)*width] == .empty) s[0] -= 1
+      else if (grid[s[0]+1 + (s[1]+1)*width] == .empty) s[0] += 1
       else {
-        try fill.put(alloc, x, false);
-        std.debug.print("{},{}\n", .{x[0], x[1]});
+        grid[s[0] + s[1]*width] = .sand;
+        std.debug.print("{},{}\n", .{s[0], s[1]});
         break;
       }
-      x[1] += 1;
-      if (x[1] >= floor + 10) break :pour;
+      s[1] += 1;
+      if (s[1] >= height-1) break :pour;
     }
   }
 
-  {
-    var maxX: usize = 0;
-    var minX: usize = 1000000;
-    {
-      var cells = fill.keyIterator();
-      while (cells.next()) |c| {
-        if (c[0] < minX) minX = c[0];
-        if (c[0] > maxX) maxX = c[0];
-      }
-    }
-
+  if (true) {
     var cy: usize = 0;
-    while (cy <= floor) : (cy += 1) {
-      var cx: usize = minX;
-      while (cx <= maxX) : (cx += 1) {
-        const cell: u8 = if (fill.get(.{cx,cy})) |rock| (if (rock) '#' else 'o') else ' ';
+    while (cy < height) : (cy += 1) {
+      var cx: usize = 0;
+      while (cx < width) : (cx += 1) {
+        const cell: u8 = switch (grid[cx + cy*width]) {
+          .empty => ' ',
+          .sand => 'o',
+          .rock => '#',
+        };
         std.debug.print("{c}", .{cell});
       }
       std.debug.print("\n", .{});
