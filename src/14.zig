@@ -11,7 +11,7 @@ const Allocator = mem.Allocator;
 const Day14Error = error {
   BadLine,
   BadDelimiter,
-  EntranceBlocked,
+  NeverHitFloor,
 };
 
 const Cell = enum { empty, rock, sand };
@@ -61,14 +61,6 @@ pub fn main() ![2]u64 {
     }
   }
 
-  //for (walls.items) |wall| {
-    //std.debug.print("{},{}", .{wall.items[0][0], wall.items[0][1]});
-    //for (wall.items[1..]) |c| {
-      //std.debug.print(" -> {},{}", .{c[0], c[1]});
-    //}
-    //std.debug.print("\n", .{});
-  //}
-
   var minX: usize = math.maxInt(usize);
   var maxX: usize = 0;
   var maxY: usize = 0;
@@ -78,10 +70,9 @@ pub fn main() ![2]u64 {
       if (c[0] > maxX) maxX = c[0];
       if (c[1] > maxY) maxY = c[1];
     };
-  const xOffset = minX - 1;
-  const width = maxX - minX + 2;
-  const height = maxY + 1;
-  std.debug.print("xOffset {} width {} height {}\n", .{xOffset, width, height});
+  const height = maxY + 2;
+  const width = 2*height - 1;
+  const xOffset = 500 - height + 1;
 
   var grid = try alloc.alloc(Cell, width*height);
   defer alloc.free(grid);
@@ -96,26 +87,19 @@ pub fn main() ![2]u64 {
       if (c0[0] == c1[0]) { // Vertical
         var y = c0[1];
         if (c0[1] < c1[1]) { // Down
-          std.debug.print("Down {}x{} {},{} {},{} {},{}\n", .{width, height, c0[0], y, c0[0], c0[1], c1[0], c1[1]});
           while (y < c1[1]) : (y += 1) {
             grid[c0[0] + y*width] = .rock;
           }
         } else { // Up
-          std.debug.print("Up {}x{} {},{} {},{} {},{}\n", .{width, height, c0[0], y, c0[0], c0[1], c1[0], c1[1]});
           while (y > c1[1]) : (y -= 1) {
             grid[c0[0] + y*width] = .rock;
           }
         }
       } else if (c0[1] == c1[1]) { // Horizontal
-        if (c0[0] < c1[0]) { // Right
-          std.debug.print("{}x{} {},{} {},{}\n", .{width, height, c0[0], c0[1], c1[0], c1[1]});
-          std.debug.print("Right {}-{}\n", .{c0[1]*width+c0[0], c0[1]*width+c1[0]});
-          mem.set(Cell, grid[c0[1]*width..][c0[0]..c1[0]], .rock);
-        } else { // Left
-          std.debug.print("{}x{} {},{} {},{}\n", .{width, height, c0[0], c0[1], c1[0], c1[1]});
-          std.debug.print("Left {}-{}\n", .{c0[1]*width+c1[0]+1, c0[1]*width+c0[0]+1});
+        if (c0[0] < c1[0]) // Right
+          mem.set(Cell, grid[c0[1]*width..][c0[0]..c1[0]], .rock)
+        else // Left
           mem.set(Cell, grid[c0[1]*width..][c1[0]+1..c0[0]+1], .rock);
-        }
       } else
         return Day14Error.BadLine;
     }
@@ -124,63 +108,38 @@ pub fn main() ![2]u64 {
     grid[cEnd[0] + width*cEnd[1]] = .rock;
   }
 
-  // test
-  for (walls.items) |wall| {
-    for (wall.items) |c| {
-      if (grid[c[0] + width*c[1]] != .rock)
-        std.debug.print("No rock {},{}\n", .{c[0],c[1]});
-    }
-  }
-  //{
-    //var px: usize = 0;
-    //while (px < width) : (px += 1) {
-      //var py: usize = 0;
-      //while (py < height) : (py += 1) {
-        //const shouldBeRock = slow: {
-          //for (walls.items) |wall| {
-            
-          //}
-        //};
-      //}
-    //}
-  //}
-
   var sand: usize = 0;
-  pour: while (true) : (sand += 1) {
+  var sandBeforeFloor: ?usize = null;
+  while (true) : (sand += 1) {
     var s = [2]usize { 500-xOffset, 0 };
-    if (grid[s[0] + s[1]*width] != .empty) return Day14Error.EntranceBlocked;
-    while (true) {
-      if (grid[s[0] + (s[1]+1)*width] == .empty) {}
-      else if (grid[s[0]-1 + (s[1]+1)*width] == .empty) s[0] -= 1
-      else if (grid[s[0]+1 + (s[1]+1)*width] == .empty) s[0] += 1
-      else {
-        grid[s[0] + s[1]*width] = .sand;
-        std.debug.print("{},{}\n", .{s[0], s[1]});
-        break;
-      }
-      s[1] += 1;
-      if (s[1] >= height-1) break :pour;
+    if (grid[s[0] + s[1]*width] != .empty) break;
+    while (true) : (s[1] += 1) {
+      if (sandBeforeFloor == null and s[1] >= maxY) sandBeforeFloor = sand;
+      if (s[1]+1 >= height) break;
+      const below = s[0] + (s[1]+1)*width;
+      if (grid[below] == .empty) {}
+      else if (grid[below-1] == .empty) s[0] -= 1
+      else if (grid[below+1] == .empty) s[0] += 1
+      else break;
     }
+    grid[s[0] + s[1]*width] = .sand;
   }
 
-  if (true) {
-    var cy: usize = 0;
-    while (cy < height) : (cy += 1) {
-      var cx: usize = 0;
-      while (cx < width) : (cx += 1) {
-        const cell: u8 = switch (grid[cx + cy*width]) {
-          .empty => ' ',
-          .sand => 'o',
-          .rock => '#',
-        };
-        std.debug.print("{c}", .{cell});
-      }
-      std.debug.print("\n", .{});
+  return .{ sandBeforeFloor orelse return Day14Error.NeverHitFloor, sand };
+}
+
+fn printField(grid: []Cell, width: usize, height: usize) void {
+  var cy: usize = 0;
+  while (cy < height) : (cy += 1) {
+    var cx: usize = 0;
+    while (cx < width) : (cx += 1) {
+      const cell: u8 = switch (grid[cx + cy*width]) {
+        .empty => ' ',
+        .sand => 'o',
+        .rock => '#',
+      };
+      std.debug.print("{c}", .{cell});
     }
-    var i: usize = minX;
-    while (i <= maxX) : (i += 1) std.debug.print("-", .{});
     std.debug.print("\n", .{});
   }
-
-  return .{ sand, 0 };
 }
