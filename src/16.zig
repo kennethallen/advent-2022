@@ -24,34 +24,56 @@ const Valve = struct {
   }
 };
 
-const Scenario = struct {
+const Worker = struct {
   pos: u64,
-  time: u64 = 0,
-  pressureReleased: u64 = 0,
-  toOpen: []u64,
-
-  fn search(self: *@This(), valves: []Valve, dists: []u64) u64 {
-    //std.debug.print("{} {} {} {any}\n", .{ self.pos, self.time, self.pressureReleased, self.toOpen });
-    var max = self.pressureReleased;
-    for (self.toOpen) |_, i| {
-      const dest = self.toOpen[i];
-      const dist = dists[self.pos + valves.len*dest];
-      const valveOpenTime = self.time + dist + 1;
-      if (valveOpenTime < 30) {
-        mem.swap(u64, &self.toOpen[0], &self.toOpen[i]);
-        defer mem.swap(u64, &self.toOpen[0], &self.toOpen[i]);
-        max = @max(max, (Scenario {
-          .pos = dest,
-          .time = valveOpenTime,
-          .pressureReleased = self.pressureReleased + (30-valveOpenTime)*valves[dest].flow,
-          .toOpen = self.toOpen[1..],
-        }).search(valves, dists));
-      }
-    }
-    //std.debug.print("Leaving {} time {} with max {}\n", .{ self.pos, self.time, max });
-    return max;
-  }
+  ready: u64,
 };
+
+fn Scenario(comptime workerCount: usize, comptime deadline: u64) type {
+  return struct {
+    pressureReleased: u64 = 0,
+    toOpen: []u64,
+    workers: [workerCount]Worker,
+
+    fn findNextReadyTime(self: @This()) usize {
+      var ready: usize = self.workers[0].ready;
+      for (self.workers[1..]) |w| {
+        if (ready < w.ready)
+          ready = w.ready;
+      }
+      return ready;
+    }
+
+    fn search(self: *@This(), valves: []Valve, dists: []u64) u64 {
+      const nextReadyTime = self.findNextReadyTime();
+
+      var max = self.pressureReleased;
+      for (self.workers) |nextWorker, nextWorkerIdx| {
+        if (nextWorker.ready > nextReadyTime) continue;
+
+        for (self.toOpen) |_, i| {
+          const dest = self.toOpen[i];
+          const dist = dists[nextWorker.pos + valves.len*dest];
+          const valveOpenTime = nextWorker.ready + dist + 1;
+          if (valveOpenTime < deadline) {
+            mem.swap(u64, &self.toOpen[0], &self.toOpen[i]);
+            defer mem.swap(u64, &self.toOpen[0], &self.toOpen[i]);
+
+            var nextWorkers = self.workers;
+            nextWorkers[nextWorkerIdx] = .{ .pos = dest, .ready = valveOpenTime };
+
+            max = @max(max, (Scenario(workerCount, deadline) {
+              .pressureReleased = self.pressureReleased + (deadline-valveOpenTime)*valves[dest].flow,
+              .toOpen = self.toOpen[1..],
+              .workers = nextWorkers,
+            }).search(valves, dists));
+          }
+        }
+      }
+      return max;
+    }
+  };
+}
 
 pub fn main() ![2]u64 {
   var gpa = heap.GeneralPurposeAllocator(.{}) {};
@@ -153,10 +175,19 @@ pub fn main() ![2]u64 {
     if (v.flow > 0)
       try toOpen.append(alloc, i);
 
-  var scenario = Scenario { .pos = startLabel, .toOpen = toOpen.items };
-  const maxPressure = scenario.search(valves.items, dists);
+  var scen0 = Scenario(1, 30) {
+    .workers = .{ .{ .pos = startLabel, .ready = 0 } },
+    .toOpen = toOpen.items,
+  };
+  const res0 = scen0.search(valves.items, dists);
 
-  return .{ maxPressure, 0 };
+  var scen1 = Scenario(2, 26) {
+    .workers = .{ .{ .pos = startLabel, .ready = 0 }, .{ .pos = startLabel, .ready = 0 } },
+    .toOpen = toOpen.items,
+  };
+  const res1 = scen1.search(valves.items, dists);
+
+  return .{ res0, res1 };
 }
 
 fn buildDists(alloc: Allocator, valves: []Valve) ![]u64 {
