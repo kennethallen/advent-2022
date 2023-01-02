@@ -26,53 +26,32 @@ const Valve = struct {
 
 const Scenario = struct {
   pos: u64,
-  timeRemaining: u64,
-  pressureReleased: u64,
-  flow: u64,
-  open: []bool,
+  time: u64 = 0,
+  pressureReleased: u64 = 0,
+  toOpen: []u64,
 
-  fn init(alloc: Allocator, valveCount: usize, startPos: u64) !@This() {
-    var open = try alloc.alloc(bool, valveCount);
-    mem.set(bool, open, false);
-    return .{
-      .pos = startPos,
-      .timeRemaining = 30,
-      .pressureReleased = 0,
-      .flow = 0,
-      .open = open,
-    };
-  }
-
-  fn search(self: *@This(), valves: []const Valve) u64 {
-    //std.debug.print("{} {} {} {} {}\n", .{ self.pos, self.timeRemaining, self.pressureReleased, self.flow, self.open.len });
-    if (self.timeRemaining == 0) return self.pressureReleased;
-
-    var max: u64 = math.minInt(u64);
-    if (!self.open[self.pos] and valves[self.pos].flow > 0) {
-      self.open[self.pos] = true;
-      defer self.open[self.pos] = false;
-      max = @max(max, (Scenario {
-        .pos = self.pos,
-        .timeRemaining = self.timeRemaining - 1,
-        .pressureReleased = self.pressureReleased + self.flow,
-        .flow = self.flow + valves[self.pos].flow,
-        .open = self.open,
-      }).search(valves));
+  fn search(self: *@This(), alloc: Allocator, valves: []Valve, dists: []u64) !u64 {
+    //std.debug.print("{} {} {} {any}\n", .{ self.pos, self.time, self.pressureReleased, self.toOpen });
+    var max = self.pressureReleased;
+    for (self.toOpen) |_, i| {
+      const dest = self.toOpen[i];
+      const dist = dists[self.pos + valves.len*dest];
+      const valveOpenTime = self.time + dist + 1;
+      if (valveOpenTime < 30) {
+        var newToOpen = try alloc.alloc(u64, self.toOpen.len - 1);
+        defer alloc.free(newToOpen);
+        mem.copy(u64, newToOpen[0..], self.toOpen[0..i]);
+        mem.copy(u64, newToOpen[i..], self.toOpen[i+1..]);
+        max = @max(max, try (Scenario {
+          .pos = dest,
+          .time = valveOpenTime,
+          .pressureReleased = self.pressureReleased + (30-valveOpenTime)*valves[dest].flow,
+          .toOpen = newToOpen,
+        }).search(alloc, valves, dists));
+      }
     }
-    for (valves[self.pos].tunnels.items) |newPos| {
-      max = @max(max, (Scenario {
-        .pos = newPos,
-        .timeRemaining = self.timeRemaining - 1,
-        .pressureReleased = self.pressureReleased + self.flow,
-        .flow = self.flow,
-        .open = self.open,
-      }).search(valves));
-    }
+    //std.debug.print("Leaving {} time {} with max {}\n", .{ self.pos, self.time, max });
     return max;
-  }
-
-  fn deinit(self: *@This(), alloc: Allocator) void {
-    alloc.free(self.open);
   }
 };
 
@@ -167,9 +146,52 @@ pub fn main() ![2]u64 {
     }
   }
 
-  var scenario = try Scenario.init(alloc, valves.items.len, startLabel);
-  defer scenario.deinit(alloc);
-  const maxPressure = scenario.search(valves.items);
+  const dists = try buildDists(alloc, valves.items);
+  defer alloc.free(dists);
+
+  var toOpen = std.ArrayListUnmanaged(u64) {};
+  defer toOpen.deinit(alloc);
+  for (valves.items) |v, i|
+    if (v.flow > 0)
+      try toOpen.append(alloc, i);
+
+  var scenario = Scenario { .pos = startLabel, .toOpen = toOpen.items };
+  const maxPressure = try scenario.search(alloc, valves.items, dists);
 
   return .{ maxPressure, 0 };
+}
+
+fn buildDists(alloc: Allocator, valves: []Valve) ![]u64 {
+  var dists = try alloc.alloc(u64, valves.len * valves.len);
+  errdefer alloc.free(dists);
+  //mem.set(u64, dists, 1_000_000);
+  
+  var visited = try alloc.alloc(bool, valves.len);
+  defer alloc.free(visited);
+
+  var toVisit = std.PriorityQueue([2]u64, void, priorityCompare).init(alloc, {});
+  defer toVisit.deinit();
+  
+  for (valves) |_, origin| {
+    mem.set(bool, visited, false);
+    try toVisit.add(.{ 0, origin });
+
+    while (toVisit.removeOrNull()) |node| {
+      if (visited[node[1]]) continue;
+      visited[node[1]] = true;
+      dists[origin + node[1]*valves.len] = node[0];
+      for (valves[node[1]].tunnels.items) |next|
+        if (!visited[next])
+          try toVisit.add(.{ node[0]+1, next });
+    }
+  
+    //for (visited) |v| if (!v) @panic("Location not visited");
+  }
+
+  //for (dists) |d| if (d == 1_000_000) @panic("Distance not set");
+  return dists;
+}
+
+fn priorityCompare(_: void, a: [2]u64, b: [2]u64) math.Order {
+  return math.order(a[0], b[0]);
 }
