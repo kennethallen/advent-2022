@@ -30,7 +30,7 @@ const Scenario = struct {
   pressureReleased: u64 = 0,
   toOpen: []u64,
 
-  fn search(self: *@This(), alloc: Allocator, valves: []Valve, dists: []u64) !u64 {
+  fn search(self: *@This(), valves: []Valve, dists: []u64) u64 {
     //std.debug.print("{} {} {} {any}\n", .{ self.pos, self.time, self.pressureReleased, self.toOpen });
     var max = self.pressureReleased;
     for (self.toOpen) |_, i| {
@@ -38,16 +38,14 @@ const Scenario = struct {
       const dist = dists[self.pos + valves.len*dest];
       const valveOpenTime = self.time + dist + 1;
       if (valveOpenTime < 30) {
-        var newToOpen = try alloc.alloc(u64, self.toOpen.len - 1);
-        defer alloc.free(newToOpen);
-        mem.copy(u64, newToOpen[0..], self.toOpen[0..i]);
-        mem.copy(u64, newToOpen[i..], self.toOpen[i+1..]);
-        max = @max(max, try (Scenario {
+        mem.swap(u64, &self.toOpen[0], &self.toOpen[i]);
+        defer mem.swap(u64, &self.toOpen[0], &self.toOpen[i]);
+        max = @max(max, (Scenario {
           .pos = dest,
           .time = valveOpenTime,
           .pressureReleased = self.pressureReleased + (30-valveOpenTime)*valves[dest].flow,
-          .toOpen = newToOpen,
-        }).search(alloc, valves, dists));
+          .toOpen = self.toOpen[1..],
+        }).search(valves, dists));
       }
     }
     //std.debug.print("Leaving {} time {} with max {}\n", .{ self.pos, self.time, max });
@@ -156,7 +154,7 @@ pub fn main() ![2]u64 {
       try toOpen.append(alloc, i);
 
   var scenario = Scenario { .pos = startLabel, .toOpen = toOpen.items };
-  const maxPressure = try scenario.search(alloc, valves.items, dists);
+  const maxPressure = scenario.search(valves.items, dists);
 
   return .{ maxPressure, 0 };
 }
