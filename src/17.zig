@@ -137,11 +137,9 @@ const Shape = struct {
       },
 
       else => {
-        var x: u64 = 0;
-        while (x < self.dims[0]) : (x += 1) {
-          var y: u64 = 0;
-          while (y < self.dims[1]) : (y += 1) {
-            if (board[y][x]) unreachable; // debug
+        for (botLeft[0]..botLeft[0] + self.dims[0]) |x| {
+          for (botLeft[1]..botLeft[1] + self.dims[1]) |y| {
+            if (board[y][x]) { std.debug.print("{},{}\n", .{x, y}); unreachable; } // debug // TODO remove
             board[y][x] = true;
           }
         }
@@ -151,10 +149,27 @@ const Shape = struct {
 };
 
 const shapes = [_]Shape{
+  // ####
   .{ .shape = 0, .dims = .{ 4, 1 } },
+
+  //  #
+  // ###
+  //  #
   .{ .shape = 1, .dims = .{ 3, 3 } },
+
+  //   #
+  //   #
+  // ###
   .{ .shape = 2, .dims = .{ 3, 3 } },
+
+  // #
+  // #
+  // #
+  // #
   .{ .shape = 3, .dims = .{ 1, 4 } },
+
+  // ##
+  // ##
   .{ .shape = 4, .dims = .{ 2, 2 } },
 };
 
@@ -183,24 +198,35 @@ pub fn main() ![2]u64 {
   var board = std.ArrayListUnmanaged([7]bool){};
   defer board.deinit(alloc);
 
-  var rocks: u64 = 0;
-  while (rocks < 2022) : (rocks += 1) {
-    const shape = shapes[rocks % shapes.len];
+  std.debug.print("{any}\n", .{pushes.items});//debug
+  var pushIdx: u32 = 0;
+  for (0..2022) |rock| {
+    const shape = shapes[rock % shapes.len];
     var botLeft = [2]u64{ 2, board.items.len + 3 };
+
+    //try printBoard(alloc, board.items, shape, botLeft); //debug
+    //std.debug.print("\n", .{}); //debug
+
     while (true) {
-      const push = pushes.items[rocks % pushes.items.len];
+      const push = pushes.items[pushIdx % pushes.items.len];
+      pushIdx += 1;
+
       if (shape.canMoveHoriz(push, board.items, botLeft))
         switch (push) {
           .left => botLeft[0] -= 1,
           .right => botLeft[0] += 1,
         };
-      try printBoard(alloc, board.items, shape, botLeft);
-      std.debug.print("\n", .{});
+      //const dirChar: u8 = switch (push) { .left => '<', .right => '>' };
+      //std.debug.print("moved h {c}\n", .{ dirChar }); //debug
+      //try printBoard(alloc, board.items, shape, botLeft); //debug
+      //std.debug.print("\n", .{}); //debug
 
       if (!shape.canFall(board.items, botLeft))
         break;
-      try printBoard(alloc, board.items, shape, botLeft);
       botLeft[1] -= 1;
+      //std.debug.print("moved v\n", .{}); //debug
+      //try printBoard(alloc, board.items, shape, botLeft); //debug
+      //std.debug.print("\n", .{}); //debug
     }
 
     const heightNeeded = botLeft[1] + shape.dims[1];
@@ -213,19 +239,19 @@ pub fn main() ![2]u64 {
 }
 
 fn printBoard(alloc: Allocator, board: [][boardWidth]bool, shape: Shape, botLeft: [2]u64) !void {
+  std.debug.print("{any} {any}\n", .{shape, botLeft});
   const future = try alloc.alloc([boardWidth]bool, @max(board.len, botLeft[1] + shape.dims[1]));
   defer alloc.free(future);
   mem.copy([boardWidth]bool, future, board);
-  if (board.len < botLeft[1] + shape.dims[1])
-    mem.set([boardWidth]bool, future[board.len..], .{false} ** boardWidth);
+  mem.set([boardWidth]bool, future[board.len..], .{false} ** boardWidth);
   shape.fill(future, botLeft);
 
-  var y: u64 = board.len;
+  var y: u64 = future.len;
   while (y > 0) {
     y -= 1;
     std.debug.print("|", .{});
-    for (board[y], 0..) |old, x| {
-      const char: u8 = if (old) '#' else if (future[y][x]) 'X' else ' ';
+    for (future[y], 0..) |new, x| {
+      const char: u8 = if (y < board.len and board[y][x]) '#' else if (new) '@' else '.';
       std.debug.print("{c}", .{char});
     }
     std.debug.print("|\n", .{});
