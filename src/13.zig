@@ -5,22 +5,21 @@ const heap = std.heap;
 const io = std.io;
 const math = std.math;
 const mem = std.mem;
-const sort = std.sort;
 
 const Allocator = mem.Allocator;
 
-const Day13Error = error {
+const Day13Error = error{
   BadPacket,
   BadDelimiter,
   EqualPair,
 };
 
 pub fn main() ![2]u64 {
-  var gpa = heap.GeneralPurposeAllocator(.{}) {};
+  var gpa = heap.GeneralPurposeAllocator(.{}){};
   defer _ = gpa.deinit();
   const alloc = gpa.allocator();
 
-  var packets = std.ArrayListUnmanaged(Packet) {};
+  var packets = std.ArrayListUnmanaged(Packet){};
   defer packets.deinit(alloc);
   defer for (packets.items) |*p| p.deinit(alloc);
   {
@@ -48,7 +47,6 @@ pub fn main() ![2]u64 {
         try packets.append(alloc, p);
       }
 
-
       if (!mem.eql(u8, "", try reader.readUntilDelimiterOrEof(&buf, '\n') orelse break))
         return Day13Error.BadDelimiter;
     }
@@ -57,32 +55,46 @@ pub fn main() ![2]u64 {
   var sum: u64 = 0;
   {
     var i: usize = 0;
-    while (2*i < packets.items.len) : (i += 1)
-      switch (comparePacket(packets.items[2*i], packets.items[2*i + 1])) {
-        .lt => sum += i+1,
+    while (2 * i < packets.items.len) : (i += 1)
+      switch (comparePacket(packets.items[2 * i], packets.items[2 * i + 1])) {
+        .lt => sum += i + 1,
         .gt => {},
         .eq => return Day13Error.EqualPair,
       };
   }
 
   var delims: [2]Packet = undefined;
-  inline for ([_]usize { 2, 6 }) |n, i| {
+  var delimsCount: usize = 0;
+  defer for (delims[0..delimsCount]) |*d| d.deinit(alloc);
+
+  inline for ([_]usize{ 2, 6 }) |n| {
     var lIn = try std.ArrayListUnmanaged(Packet).initCapacity(alloc, 1);
     errdefer lIn.deinit(alloc);
     lIn.appendAssumeCapacity(.{ .int = n });
     var lOut = try std.ArrayListUnmanaged(Packet).initCapacity(alloc, 1);
-    errdefer lOut.deinit(alloc);
     lOut.appendAssumeCapacity(.{ .list = lIn });
-    delims[i] = .{ .list = lOut };
-    try packets.append(alloc, delims[i]);
+    delims[delimsCount] = .{ .list = lOut };
+    delimsCount += 1;
   }
 
-  sort.sort(Packet, packets.items, {}, packetLessThan);
   var decoderKey: usize = 1;
-  var i: usize = 0;
-  for (delims) |d| {
-    while (comparePacket(d, packets.items[i]) != .eq) i += 1;
-    decoderKey *= i+1;
+  var lo: usize = 0;
+  for (delims, 0..) |d, i| {
+    var hi = packets.items.len - 1;
+    swaps: while (lo < hi) {
+      while (comparePacket(packets.items[lo], d) == .lt) {
+        lo += 1;
+        if (lo >= hi) break :swaps;
+      }
+      while (comparePacket(packets.items[hi], d) == .gt) {
+        hi -= 1;
+        if (lo >= hi) break :swaps;
+      }
+      mem.swap(Packet, &packets.items[lo], &packets.items[hi]);
+      lo += 1;
+      hi -= 1;
+    }
+    decoderKey *= lo + i + 1;
   }
 
   return .{ sum, decoderKey };
@@ -106,7 +118,7 @@ const Packet = union(enum) {
 fn parsePacket(alloc: Allocator, line: []const u8) !struct { usize, Packet } {
   if (line.len >= 2 and line[0] == '[') {
     var cursor: usize = 1;
-    var list = std.ArrayListUnmanaged(Packet) {};
+    var list = std.ArrayListUnmanaged(Packet){};
     errdefer list.deinit(alloc);
     errdefer for (list.items) |*p| p.deinit(alloc);
     if (line[cursor] != ']')
@@ -128,9 +140,8 @@ fn parsePacket(alloc: Allocator, line: []const u8) !struct { usize, Packet } {
     var cursor: usize = 1;
     while (cursor < line.len and line[cursor] >= '0' and line[cursor] <= '9')
       cursor += 1;
-    return .{ cursor, .{ .int = try fmt.parseUnsigned(usize, line[0..cursor], 0) }};
-  } else
-    return Day13Error.BadPacket;
+    return .{ cursor, .{ .int = try fmt.parseUnsigned(usize, line[0..cursor], 0) } };
+  } else return Day13Error.BadPacket;
 }
 
 fn comparePacket(l: Packet, r: Packet) math.Order {
@@ -138,13 +149,13 @@ fn comparePacket(l: Packet, r: Packet) math.Order {
     .int => |li| switch (r) {
       .int => |ri| return math.order(li, ri),
       .list => |_| {
-        var ll = [_]Packet { l };
+        var ll = [_]Packet{l};
         return comparePacket(.{ .list = .{ .items = &ll, .capacity = ll.len } }, r);
       },
     },
     .list => |ll| switch (r) {
       .int => |_| {
-        var rl = [_]Packet { r };
+        var rl = [_]Packet{r};
         return comparePacket(l, .{ .list = .{ .items = &rl, .capacity = rl.len } });
       },
       .list => |rl| {
@@ -156,8 +167,8 @@ fn comparePacket(l: Packet, r: Packet) math.Order {
           if (cmp != .eq) return cmp;
           i += 1;
         }
-      }
-    }
+      },
+    },
   }
 }
 

@@ -8,7 +8,7 @@ const mem = std.mem;
 
 const Allocator = mem.Allocator;
 
-const Day09Error = error {
+const Day09Error = error{
   InvalidMove,
 };
 
@@ -16,11 +16,11 @@ const Dir = enum { l, r, d, u };
 
 fn Rope(comptime n: usize) type {
   return struct {
-    knots: [n][2]i64 = [_][2]i64 { [2]i64 { 0, 0 } } ** n,
+    knots: [n][2]i64 = [_][2]i64{[2]i64{ 0, 0 }} ** n,
     trail: std.AutoHashMapUnmanaged([2]i64, void) = .{},
 
     pub fn init(alloc: Allocator) !@This() {
-      var r = @This() {};
+      var r = @This(){};
       try r.trail.put(alloc, r.knots[n - 1], {});
       return r;
     }
@@ -36,12 +36,9 @@ fn Rope(comptime n: usize) type {
         .u => self.knots[0][1] += 1,
         .d => self.knots[0][1] -= 1,
       }
-      inline for (self.knots[1..]) |*t, i| {
+      inline for (self.knots[1..], 0..) |*t, i| {
         const h = self.knots[i];
-        if (t[0] < h[0]-1) t.* = .{ h[0]-1, clampDist(h[1], t[1]) } else
-        if (t[0] > h[0]+1) t.* = .{ h[0]+1, clampDist(h[1], t[1]) } else
-        if (t[1] < h[1]-1) t.* = .{ clampDist(h[0], t[0]), h[1]-1 } else
-        if (t[1] > h[1]+1) t.* = .{ clampDist(h[0], t[0]), h[1]+1 };
+        if (t[0] < h[0] - 1) t.* = .{ h[0] - 1, clampDist(h[1], t[1]) } else if (t[0] > h[0] + 1) t.* = .{ h[0] + 1, clampDist(h[1], t[1]) } else if (t[1] < h[1] - 1) t.* = .{ clampDist(h[0], t[0]), h[1] - 1 } else if (t[1] > h[1] + 1) t.* = .{ clampDist(h[0], t[0]), h[1] + 1 };
 
         if (i == n - 2)
           try self.trail.put(alloc, t.*, {});
@@ -59,7 +56,7 @@ fn clampDist(h: i64, t: i64) i64 {
 }
 
 pub fn main() ![2]u64 {
-  var gpa = heap.GeneralPurposeAllocator(.{}) {};
+  var gpa = heap.GeneralPurposeAllocator(.{}){};
   defer _ = gpa.deinit();
   const alloc = gpa.allocator();
 

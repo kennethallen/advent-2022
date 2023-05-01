@@ -4,7 +4,7 @@ const heap = std.heap;
 const io = std.io;
 const mem = std.mem;
 
-const Day05Error = error {
+const Day05Error = error{
   InvalidStacks,
   InvalidMoves,
 };
@@ -43,14 +43,14 @@ pub fn main() ![2]u64 {
       }
 
       while (true) {
-        for (stacks.items) |*stack, i| {
+        for (stacks.items, 0..) |*stack, i| {
           const li = i * 4;
           if (li + 3 < line.len and line[li + 3] != ' ')
             return Day05Error.InvalidStacks;
 
           if (line[li] == '[' and line[li + 2] == ']') {
             try stack.append(line[li + 1]);
-          } else if (mem.eql(u8, line[li..li+3], "   ")) {
+          } else if (mem.eql(u8, line[li .. li + 3], "   ")) {
             if (stack.items.len > 0)
               return Day05Error.InvalidStacks;
           } else {

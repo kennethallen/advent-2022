@@ -8,7 +8,7 @@ const mem = std.mem;
 
 const Allocator = mem.Allocator;
 
-const Day10Error = error {
+const Day10Error = error{
   InvalidInstruction,
 };
 
@@ -34,8 +34,7 @@ pub fn main() ![2]u64 {
       else if (row.len >= 6 and mem.eql(u8, row[0..5], "addx ")) {
         nextCycle += 2;
         nextX += try fmt.parseInt(i64, row[5..], 0);
-      } else
-        return Day10Error.InvalidInstruction;
+      } else return Day10Error.InvalidInstruction;
 
       while (cycle < nextCycle) {
         const screenPos = @mod(cycle, 40);
@@ -50,7 +49,7 @@ pub fn main() ![2]u64 {
           nextAdd += 40;
         }
       }
-      
+
       x = nextX;
     }
   }

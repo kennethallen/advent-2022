@@ -8,7 +8,7 @@ const toplist = @import("toplist.zig");
 
 const Allocator = mem.Allocator;
 
-const Day11Error = error {
+const Day11Error = error{
   InvalidMonkey,
 };
 
@@ -22,7 +22,7 @@ const Monkey = struct {
   falseThrow: usize,
   items: std.ArrayListUnmanaged(u64) = .{},
   inspections: u64 = 0,
-  
+
   fn deinit(self: *@This(), alloc: Allocator) void {
     self.items.deinit(alloc);
   }
@@ -37,7 +37,10 @@ const Monkey = struct {
   fn inspect(self: *@This(), i: u64, comptime part2: bool, itemMod: u64) InspectResult {
     self.inspections += 1;
     const arg = self.operand orelse i;
-    var j = switch (self.operation) { .add => i + arg, .mul => i * arg };
+    var j = switch (self.operation) {
+      .add => i + arg,
+      .mul => i * arg,
+    };
     if (!part2) j /= 3;
     if (part2) j %= itemMod;
     return .{
@@ -48,11 +51,11 @@ const Monkey = struct {
 };
 
 pub fn main() ![2]u64 {
-  var gpa = heap.GeneralPurposeAllocator(.{}) {};
+  var gpa = heap.GeneralPurposeAllocator(.{}){};
   defer _ = gpa.deinit();
   const alloc = gpa.allocator();
 
-  var monkeys = std.ArrayListUnmanaged(Monkey) {};
+  var monkeys = std.ArrayListUnmanaged(Monkey){};
   defer monkeys.deinit(alloc);
   defer for (monkeys.items) |*m| m.deinit(alloc);
   {
@@ -64,26 +67,26 @@ pub fn main() ![2]u64 {
 
     while (true) {
       var line = try reader.readUntilDelimiterOrEof(&buf, '\n') orelse break;
-      if (!mem.eql(u8, line[0..7], "Monkey ") or !mem.eql(u8, line[line.len-1..], ":"))
+      if (!mem.eql(u8, line[0..7], "Monkey ") or !mem.eql(u8, line[line.len - 1 ..], ":"))
         return Day11Error.InvalidMonkey;
-      if (try fmt.parseUnsigned(u64, line[7..line.len-1], 0) != monkeys.items.len)
+      if (try fmt.parseUnsigned(u64, line[7 .. line.len - 1], 0) != monkeys.items.len)
         return Day11Error.InvalidMonkey;
 
       line = try reader.readUntilDelimiter(&buf, '\n');
       if (!mem.eql(u8, line[0..18], "  Starting items: "))
         return Day11Error.InvalidMonkey;
       {
-        var items = std.ArrayListUnmanaged(u64) {};
+        var items = std.ArrayListUnmanaged(u64){};
         errdefer items.deinit(alloc);
         line = line[18..];
         {
           var num = mem.sliceTo(line, ',');
           while (num.len < line.len) {
             try items.append(alloc, try fmt.parseUnsigned(u64, num, 0));
-            if (line[num.len+1] != ' ')
+            if (line[num.len + 1] != ' ')
               return Day11Error.InvalidMonkey;
 
-            line = line[num.len+2..];
+            line = line[num.len + 2 ..];
             num = mem.sliceTo(line, ',');
           }
           try items.append(alloc, try fmt.parseUnsigned(u64, num, 0));
@@ -108,14 +111,14 @@ pub fn main() ![2]u64 {
         const divTest = try fmt.parseUnsigned(u64, line[21..], 0);
 
         line = try reader.readUntilDelimiter(&buf, '\n');
-        if (!mem.eql(u8, line[0..29], "    If true: throw to monkey "))
+        if (!mem.eql(u8, line[0..29], "  If true: throw to monkey "))
           return Day11Error.InvalidMonkey;
         const trueThrow = try fmt.parseUnsigned(usize, line[29..], 0);
         if (trueThrow == monkeys.items.len)
           return Day11Error.InvalidMonkey;
 
         line = try reader.readUntilDelimiter(&buf, '\n');
-        if (!mem.eql(u8, line[0..30], "    If false: throw to monkey "))
+        if (!mem.eql(u8, line[0..30], "  If false: throw to monkey "))
           return Day11Error.InvalidMonkey;
         const falseThrow = try fmt.parseUnsigned(usize, line[30..], 0);
         if (falseThrow == monkeys.items.len)
@@ -169,7 +172,7 @@ fn process(
     }
   }
 
-  var top = toplist.Toplist(u64, 2) {};
+  var top = toplist.Toplist(u64, 2){};
   for (monkeys) |m| _ = top.insert(m.inspections);
   var product: u64 = 1;
   for (top.asSlice()) |n| product *= n;

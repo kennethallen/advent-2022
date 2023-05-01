@@ -8,7 +8,7 @@ const mem = std.mem;
 
 const Allocator = mem.Allocator;
 
-const Day07Error = error {
+const Day07Error = error{
   InvalidCommand,
   ExpectedDirFoundFile,
   ExpectedFileFoundDir,
@@ -29,7 +29,7 @@ const Dir = struct {
     }
     self.children.deinit(alloc);
   }
-  
+
   fn sumSmall(self: @This()) [2]u64 {
     var mySize: u64 = 0;
     var smallChildrenSum: u64 = 0;
@@ -43,7 +43,7 @@ const Dir = struct {
       },
       .file => |f| mySize += f,
     };
-    
+
     if (mySize <= 100_000)
       smallChildrenSum += mySize;
 
@@ -64,7 +64,7 @@ const Dir = struct {
       },
       .file => |f| mySize += f,
     };
-    
+
     if (mySize >= limit and mySize < candidate)
       candidate = mySize;
 
@@ -155,7 +155,7 @@ pub const Fs = struct {
 };
 
 pub fn main() ![2]u64 {
-  var gpa = heap.GeneralPurposeAllocator(.{}) {};
+  var gpa = heap.GeneralPurposeAllocator(.{}){};
   defer _ = gpa.deinit();
   const alloc = gpa.allocator();
 
@@ -198,7 +198,7 @@ pub fn main() ![2]u64 {
           const tok0 = try reader.readUntilDelimiterOrEof(&buf, ' ') orelse break :scan;
           if (mem.eql(u8, tok0, "$"))
             break;
-          
+
           const name = try reader.readUntilDelimiterAlloc(alloc, '\n', 100);
           if (mem.eql(u8, tok0, "dir")) {
             _ = try myFs.cwd().lsDir(alloc, name);
@@ -207,8 +207,7 @@ pub fn main() ![2]u64 {
             try myFs.cwd().lsFile(alloc, name, size);
           }
         }
-      } else
-        return Day07Error.InvalidCommand;
+      } else return Day07Error.InvalidCommand;
     }
   }
 

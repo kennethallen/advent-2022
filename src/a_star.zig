@@ -4,7 +4,7 @@ const mem = std.mem;
 
 const Allocator = mem.Allocator;
 
-const Error = error {
+const Error = error{
   NoPath,
   OutOfMemory,
 };
@@ -18,8 +18,7 @@ fn Node(comptime Pos: type, comptime Cost: type) type {
     fn priorityCompare(_: void, a: @This(), b: @This()) math.Order {
       if (a.estTotalCost) |aCost| {
         return if (b.estTotalCost) |bCost| math.order(aCost, bCost) else return .gt;
-      } else
-        return if (b.estTotalCost) |_| .lt else .eq;
+      } else return if (b.estTotalCost) |_| .lt else .eq;
     }
   };
 }
@@ -37,8 +36,8 @@ pub fn aStar(
   ctx: anytype,
   alloc: Allocator,
   start: Pos,
-  comptime heur: fn(ctx: @TypeOf(ctx), x: Pos) ?Cost,
-  comptime explore: fn(
+  comptime heur: fn (ctx: @TypeOf(ctx), x: Pos) ?Cost,
+  comptime explore: fn (
     ctx: @TypeOf(ctx),
     x: Pos,
     buf: *std.ArrayList(Explore(Pos, Cost)),
@@ -49,7 +48,7 @@ pub fn aStar(
   // Init with start
   try toVisit.add(.{ .pos = start, .knownCost = 0, .estTotalCost = heur(ctx, start) });
 
-  var visited = std.AutoHashMapUnmanaged(Pos, void) {};
+  var visited = std.AutoHashMapUnmanaged(Pos, void){};
   defer visited.deinit(alloc);
 
   var exploreBuf = std.ArrayList(Explore(Pos, Cost)).init(alloc);

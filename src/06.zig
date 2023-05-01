@@ -3,7 +3,7 @@ const fs = std.fs;
 const io = std.io;
 const mem = std.mem;
 
-const Day06Error = error {
+const Day06Error = error{
   InvalidSignal,
 };
 
@@ -21,11 +21,11 @@ fn findMarker(comptime window: usize) !u64 {
   var total = toAdvance;
 
   while (true) {
-    if (try reader.readAll(buf[buf.len - toAdvance..]) < toAdvance)
+    if (try reader.readAll(buf[buf.len - toAdvance ..]) < toAdvance)
       return Day06Error.InvalidSignal;
     if (buf[buf.len - 1] == '\n')
       return Day06Error.InvalidSignal;
-  
+
     toAdvance = check(&buf, buf.len - toAdvance);
     if (toAdvance == 0) break;
 

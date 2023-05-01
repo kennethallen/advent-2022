@@ -6,7 +6,7 @@ const math = std.math;
 const toplist = @import("toplist.zig");
 
 pub fn main() ![2]u64 {
-  var maxElves = toplist.Toplist(u64, 3) {};
+  var maxElves = toplist.Toplist(u64, 3){};
   {
     const file = try fs.cwd().openFile("input/01.txt", .{});
     defer file.close();
@@ -21,8 +21,7 @@ pub fn main() ![2]u64 {
           _ = maxElves.insert(e);
           elf = null;
         }
-      } else
-        elf = (elf orelse 0) + try std.fmt.parseUnsigned(u64, line, 0);
+      } else elf = (elf orelse 0) + try std.fmt.parseUnsigned(u64, line, 0);
     }
     if (elf) |e| _ = maxElves.insert(e);
   }

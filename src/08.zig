@@ -6,7 +6,7 @@ const mem = std.mem;
 
 const Allocator = mem.Allocator;
 
-const Day08Error = error {
+const Day08Error = error{
   InvalidTree,
   UnevenRows,
   TooSmall,
@@ -39,23 +39,23 @@ const VisTracker = struct {
   pub fn doCount(self: *@This()) u64 {
     self.count = 4; // Corners
 
-    for (self.trees[1..self.height-1]) |_, y| {
+    for (self.trees[1 .. self.height - 1], 0..) |_, y| {
       var x: u64 = 0;
       while (x < self.width) : (x += 1)
-        if (self.process(x, y+1)) break;
+        if (self.process(x, y + 1)) break;
       self.sightline = 0;
 
       x = self.width;
       while (x > 0) {
         x -= 1;
-        if (self.process(x, y+1)) break;
+        if (self.process(x, y + 1)) break;
       }
       self.sightline = 0;
     }
 
     var x: u64 = 1;
-    while (x < self.width-1) : (x += 1) {
-      for (self.trees) |_, y|
+    while (x < self.width - 1) : (x += 1) {
+      for (self.trees, 0..) |_, y|
         if (self.process(x, y)) break;
       self.sightline = 0;
 
@@ -73,7 +73,7 @@ const VisTracker = struct {
   fn process(self: *@This(), x: usize, y: usize) bool {
     const tree = self.trees[y][x];
     if (tree >= self.sightline) {
-      var vis = &self.vis[y*self.width + x];
+      var vis = &self.vis[y * self.width + x];
       if (!vis.*) {
         vis.* = true;
         self.count += 1;
@@ -132,11 +132,11 @@ const VisTracker = struct {
 };
 
 pub fn main() ![2]u64 {
-  var gpa = heap.GeneralPurposeAllocator(.{}) {};
+  var gpa = heap.GeneralPurposeAllocator(.{}){};
   defer _ = gpa.deinit();
   const alloc = gpa.allocator();
 
-  var grid = std.ArrayListUnmanaged([]u8) {};
+  var grid = std.ArrayListUnmanaged([]u8){};
   defer grid.deinit(alloc);
   defer for (grid.items) |row| alloc.free(row);
   {

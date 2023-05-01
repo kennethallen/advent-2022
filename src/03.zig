@@ -2,7 +2,7 @@ const std = @import("std");
 const fs = std.fs;
 const io = std.io;
 
-const Day03Error = error {
+const Day03Error = error{
   InvalidRucksack,
   NoMisplacedItem,
   NoBadge,
@@ -20,14 +20,14 @@ pub fn main() ![2]u64 {
 
     input: while (true) {
       var lines: [bufs.len][]u8 = undefined;
-      inline for (lines) |*line, i| {
+      inline for (&lines, 0..) |*line, i| {
         line.* = if (i == 0)
           try reader.readUntilDelimiterOrEof(&bufs[i], '\n') orelse break :input
         else
           try reader.readUntilDelimiter(&bufs[i], '\n');
         sumPrios0 += try part0(line.*);
       }
-      
+
       sumPrios1 += try part1(&lines);
     }
   }
