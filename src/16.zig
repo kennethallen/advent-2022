@@ -192,7 +192,7 @@ pub fn main() ![2]u64 {
 fn buildDists(alloc: Allocator, valves: []Valve) ![]u64 {
   var dists = try alloc.alloc(u64, valves.len * valves.len);
   errdefer alloc.free(dists);
-  //mem.set(u64, dists, 1_000_000);
+  //@memset(dists, 1_000_000);
 
   var visited = try alloc.alloc(bool, valves.len);
   defer alloc.free(visited);
@@ -201,7 +201,7 @@ fn buildDists(alloc: Allocator, valves: []Valve) ![]u64 {
   defer toVisit.deinit();
 
   for (valves, 0..) |_, origin| {
-    mem.set(bool, visited, false);
+    @memset(visited, false);
     try toVisit.add(.{ 0, origin });
 
     while (toVisit.removeOrNull()) |node| {

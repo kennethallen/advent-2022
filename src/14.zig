@@ -76,7 +76,7 @@ pub fn main() ![2]u64 {
 
   var grid = try alloc.alloc(Cell, width * height);
   defer alloc.free(grid);
-  mem.set(Cell, grid, .empty);
+  @memset(grid, .empty);
 
   for (walls.items) |wall| {
     for (wall.items) |*c| c[0] -= xOffset;
@@ -97,9 +97,9 @@ pub fn main() ![2]u64 {
         }
       } else if (c0[1] == c1[1]) { // Horizontal
         if (c0[0] < c1[0]) // Right
-          mem.set(Cell, grid[c0[1] * width ..][c0[0]..c1[0]], .rock)
+          @memset(grid[c0[1] * width ..][c0[0]..c1[0]], .rock)
         else // Left
-          mem.set(Cell, grid[c0[1] * width ..][c1[0] + 1 .. c0[0] + 1], .rock);
+          @memset(grid[c0[1] * width ..][c1[0] + 1 .. c0[0] + 1], .rock);
       } else return Day14Error.BadLine;
     }
 

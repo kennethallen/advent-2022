@@ -27,7 +27,7 @@ const VisTracker = struct {
     for (trees[1..]) |row|
       if (row.len != width) return Day08Error.UnevenRows;
     var vis = try alloc.alloc(bool, width * trees.len);
-    mem.set(bool, vis, false);
+    @memset(vis, false);
 
     return .{ .trees = trees, .vis = vis, .height = trees.len, .width = width };
   }

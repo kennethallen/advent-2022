@@ -81,7 +81,7 @@ pub fn main() ![2]u64 {
 
   //  var grid = try alloc.alloc(?bool, width*height);
   //  defer alloc.free(grid);
-  //  mem.set(?bool, grid, null);
+  //  @memset(grid, null);
 
   //var blockedCellsLine2M = range_set.RangeSet {};
   var blockedCellsLine2M = std.AutoHashMapUnmanaged(isize, void){};
