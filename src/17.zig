@@ -13,164 +13,182 @@ const Day17Error = error{
   UnknownSymbol,
 };
 
-const boardWidth: u64 = 7;
+const boardWidth: u3 = 7;
 
 const Push = enum { left, right };
 
-const Shape = struct {
-  dims: [2]u64,
-  shape: u64,
+const Shape = enum {
+  // ####
+  flat,
 
-  fn canMoveHoriz(self: @This(), dir: Push, board: [][boardWidth]bool, botLeft: [2]u64) bool {
-    if (botLeft[0] == switch (dir) {
-      .left => 0,
-      .right => boardWidth - self.dims[0],
-    }) return false;
+  //  #
+  // ###
+  //  #
+  plus,
 
-    switch (self.shape) {
-      1 => {
-        const checkCoords: [3][2]u64 = switch (dir) {
-          .left => .{
-            botLeft,
-            .{ botLeft[0] - 1, botLeft[1] + 1 },
-            .{ botLeft[0], botLeft[1] + 2 },
-          },
-          .right => .{
-            .{ botLeft[0] + 2, botLeft[1] },
-            .{ botLeft[0] + 3, botLeft[1] + 1 },
-            .{ botLeft[0] + 2, botLeft[1] + 2 },
-          },
-        };
-        for (checkCoords) |c| {
-          if (c[1] < board.len and board[c[1]][c[0]]) return false;
-        }
-      },
+  //   #
+  //   #
+  // ###
+  backL,
 
-      2 => {
-        const checkCoords: [3][2]u64 = switch (dir) {
-          .left => .{
-            .{ botLeft[0] - 1, botLeft[1] },
-            .{ botLeft[0] + 1, botLeft[1] + 1 },
-            .{ botLeft[0] + 1, botLeft[1] + 2 },
-          },
-          .right => .{
-            .{ botLeft[0] + 3, botLeft[1] },
-            .{ botLeft[0] + 3, botLeft[1] + 1 },
-            .{ botLeft[0] + 3, botLeft[1] + 2 },
-          },
-        };
-        for (checkCoords) |c| {
-          if (c[1] < board.len and board[c[1]][c[0]]) return false;
-        }
-      },
+  // #
+  // #
+  // #
+  // #
+  tall,
 
-      else => {
-        const searchX = switch (dir) {
-          .left => botLeft[0] - 1,
-          .right => botLeft[0] + self.dims[0],
-        };
-        var searchY = botLeft[1];
-        while (searchY < board.len and searchY < botLeft[1] + self.dims[1]) : (searchY += 1) {
-          if (board[searchY][searchX]) return false;
-        }
-      },
-    }
-    return true;
+  // ##
+  // ##
+  square,
+
+  fn dims(self: Shape) [2]u64 {
+    return switch (self) {
+      .flat => .{ 4, 1 },
+      .plus, .backL => .{ 3, 3 },
+      .tall => .{ 1, 4 },
+      .square => .{ 2, 2 },
+    };
   }
 
-  fn canFall(self: @This(), board: [][boardWidth]bool, botLeft: [2]u64) bool {
-    if (botLeft[1] == 0) return false;
-
-    switch (self.shape) {
-      1 => {
-        const checkCoords = [_][2]u64{
-          .{ botLeft[0], botLeft[1] },
-          .{ botLeft[0] + 1, botLeft[1] - 1 },
-          .{ botLeft[0] + 2, botLeft[1] },
-        };
-        for (checkCoords) |c| {
-          if (c[1] < board.len and board[c[1]][c[0]]) return false;
-        }
+  fn includes(self: Shape, pos: [2]u64) bool {
+    return switch (self) {
+      .flat, .tall, .square => pos[0] < self.dims()[0] and pos[1] < self.dims()[1],
+      .plus => switch (pos[0]) {
+        0, 2 => pos[1] == 1,
+        1 => pos[1] <= 2,
+        else => false,
       },
-
-      else => {
-        const searchY = botLeft[1] - 1;
-        if (searchY < board.len) {
-          var searchX = botLeft[0];
-          while (searchX < botLeft[0] + self.dims[0]) : (searchX += 1) {
-            if (board[searchY][searchX]) return false;
-          }
-        }
+      .backL => switch (pos[0]) {
+        0, 1 => pos[1] == 0,
+        2 => pos[1] <= 2,
+        else => false,
       },
-    }
-    return true;
-  }
-
-  fn fill(self: @This(), board: [][boardWidth]bool, botLeft: [2]u64) void {
-    switch (self.shape) {
-      1 => {
-        const fillCoords = [_][2]u64{
-          .{ botLeft[0] + 1, botLeft[1] },
-          .{ botLeft[0], botLeft[1] + 1 },
-          .{ botLeft[0] + 1, botLeft[1] + 1 },
-          .{ botLeft[0] + 2, botLeft[1] + 1 },
-          .{ botLeft[0] + 1, botLeft[1] + 2 },
-        };
-        for (fillCoords) |c| {
-          if (board[c[1]][c[0]]) unreachable; // debug
-          board[c[1]][c[0]] = true;
-        }
-      },
-
-      2 => {
-        const fillCoords = [_][2]u64{
-          botLeft,
-          .{ botLeft[0] + 1, botLeft[1] },
-          .{ botLeft[0] + 2, botLeft[1] },
-          .{ botLeft[0] + 2, botLeft[1] + 1 },
-          .{ botLeft[0] + 2, botLeft[1] + 2 },
-        };
-        for (fillCoords) |c| {
-          if (board[c[1]][c[0]]) unreachable; // debug
-          board[c[1]][c[0]] = true;
-        }
-      },
-
-      else => {
-        for (botLeft[0]..botLeft[0] + self.dims[0]) |x| {
-          for (botLeft[1]..botLeft[1] + self.dims[1]) |y| {
-            if (board[y][x]) { std.debug.print("{},{}\n", .{x, y}); unreachable; } // debug // TODO remove
-            board[y][x] = true;
-          }
-        }
-      },
-    }
+    };
   }
 };
 
-const shapes = [_]Shape{
-  // ####
-  .{ .shape = 0, .dims = .{ 4, 1 } },
+const Row = u7;
 
-  //  #
-  // ###
-  //  #
-  .{ .shape = 1, .dims = .{ 3, 3 } },
+const Board = struct {
+  rows: std.ArrayListUnmanaged(Row) = .{},
+  bottomOffset: u64 = 0,
+  height: u64 = 0,
 
-  //   #
-  //   #
-  // ###
-  .{ .shape = 2, .dims = .{ 3, 3 } },
+  fn deinit(self: *@This(), alloc: Allocator) void {
+    self.rows.deinit(alloc);
+  }
 
-  // #
-  // #
-  // #
-  // #
-  .{ .shape = 3, .dims = .{ 1, 4 } },
+  fn debugPrint(self: @This(), shape: Shape, shapePos: [2]u64) !void {
+    std.debug.print("{any} {any}\n", .{shape, shapePos});
 
-  // ##
-  // ##
-  .{ .shape = 4, .dims = .{ 2, 2 } },
+    var y: u64 = @max(self.height, shapePos[1] + shape.dims()[1]);
+    while (y > 0) {
+      y -= 1;
+
+      const row: Row = if (y - self.bottomOffset < self.rows.items.len) self.rows.items[y - self.bottomOffset] else 0;
+
+      std.debug.print("|", .{});
+      for (0..boardWidth) |x| {
+        const char: u8 =
+          if (row & (@intCast(Row, 0b1) << @intCast(u3, x)) != 0) '#'
+          else if (x >= shapePos[0] and y >= shapePos[1] and shape.includes(.{ x - shapePos[0], y - shapePos[1] })) '@'
+          else '.';
+        std.debug.print("{c}", .{char});
+      }
+      std.debug.print("|\n", .{});
+    }
+  }
+
+  fn ensureRowCount(self: *@This(), alloc: Allocator, reqHeight: u64) !void {
+    if (reqHeight > self.rows.items.len)
+      try self.rows.appendNTimes(alloc, 0, reqHeight - self.rows.items.len);
+  }
+
+  fn fill(self: *@This(), alloc: Allocator, shape: Shape, botLeft: [2]u64) !u64 {
+    const y = botLeft[1] - self.bottomOffset;
+    const shapeHeight = shape.dims()[1];
+    try self.ensureRowCount(alloc, y + shapeHeight);
+
+    self.height = @max(self.height, botLeft[1] + shapeHeight);
+
+    const xShift = @intCast(u3, botLeft[0]);
+    switch (shape) {
+      .flat => {
+        self.rows.items[y] |= @intCast(Row, 0b1111) << xShift;
+      },
+      .plus => {
+        const midMask = @intCast(Row, 0b010) << xShift;
+        self.rows.items[y] |= midMask;
+        self.rows.items[y+1] |= @intCast(Row, 0b111) << xShift;
+        self.rows.items[y+2] |= midMask;
+      },
+      .backL => {
+        self.rows.items[y] |= @intCast(Row, 0b111) << xShift;
+        const stemMask = @intCast(Row, 0b100) << xShift;
+        for (self.rows.items[y+1..y+3]) |*row| row.* |= stemMask;
+      },
+      .tall => {
+        const mask = @intCast(Row, 0b1) << xShift;
+        for (self.rows.items[y..y+4]) |*row| row.* |= mask;
+      },
+      .square => {
+        const mask = @intCast(Row, 0b11) << xShift;
+        for (self.rows.items[y..y+2]) |*row| row.* |= mask;
+      },
+    }
+    return 0;
+  }
+
+  fn overlaps(self: *@This(), alloc: Allocator, shape: Shape, botLeft: [2]u64) !bool {
+    const y = botLeft[1] - self.bottomOffset;
+    try self.ensureRowCount(alloc, y + shape.dims()[1]);
+
+    const xShift = @intCast(u3, botLeft[0]);
+    switch (shape) {
+      .flat => {
+        return self.rows.items[y] & (@intCast(Row, 0b1111) << xShift) != 0;
+      },
+      .plus => {
+        const midMask = @intCast(Row, 0b010) << xShift;
+        return self.rows.items[y] & midMask != 0
+          or self.rows.items[y+1] & (@intCast(Row, 0b111) << xShift) != 0
+          or self.rows.items[y+2] & midMask != 0;
+      },
+      .backL => {
+        const stemMask = @intCast(Row, 0b100) << xShift;
+        return self.rows.items[y] & (@intCast(Row, 0b111) << xShift) != 0
+          or self.rows.items[y+1] & stemMask != 0
+          or self.rows.items[y+2] & stemMask != 0;
+      },
+      .tall => {
+        const mask = @intCast(Row, 0b1) << xShift;
+        return self.rows.items[y] & mask != 0
+          or self.rows.items[y+1] & mask != 0
+          or self.rows.items[y+2] & mask != 0
+          or self.rows.items[y+3] & mask != 0;
+      },
+      .square => {
+        const mask = @intCast(Row, 0b11) << xShift;
+        return self.rows.items[y] & mask != 0
+          or self.rows.items[y+1] & mask != 0;
+      },
+    }
+  }
+
+  fn canMoveHoriz(self: *@This(), alloc: Allocator, dir: Push, shape: Shape, botLeft: [2]u64) !bool {
+    return botLeft[0] != switch (dir) {
+      .left => 0,
+      .right => boardWidth - shape.dims()[0],
+    } and !try self.overlaps(alloc, shape, .{
+      switch (dir) { .left => botLeft[0] - 1, .right => botLeft[0] + 1 },
+      botLeft[1],
+    });
+  }
+
+  fn canFall(self: *@This(), alloc: Allocator, shape: Shape, botLeft: [2]u64) !bool {
+    return botLeft[1] > self.bottomOffset
+      and !try self.overlaps(alloc, shape, .{ botLeft[0], botLeft[1] - 1 });
+  }
 };
 
 pub fn main() ![2]u64 {
@@ -195,65 +213,42 @@ pub fn main() ![2]u64 {
     } else |_| {}
   }
 
-  var board = std.ArrayListUnmanaged([7]bool){};
+  var board = Board {};
   defer board.deinit(alloc);
 
-  std.debug.print("{any}\n", .{pushes.items});//debug
   var pushIdx: u32 = 0;
+  //for (0..1_000_000_000_000) |rock| {
   for (0..2022) |rock| {
-    const shape = shapes[rock % shapes.len];
-    var botLeft = [2]u64{ 2, board.items.len + 3 };
+    const shape = @intToEnum(Shape, rock % @typeInfo(Shape).Enum.fields.len);
+    var botLeft = [2]u64{ 2, board.height + 3 };
 
-    //try printBoard(alloc, board.items, shape, botLeft); //debug
+    //try board.debugPrint(shape, botLeft); //debug
     //std.debug.print("\n", .{}); //debug
 
     while (true) {
       const push = pushes.items[pushIdx % pushes.items.len];
       pushIdx += 1;
 
-      if (shape.canMoveHoriz(push, board.items, botLeft))
+      //std.debug.print("{}\n", .{ push }); //debug
+      if (try board.canMoveHoriz(alloc, push, shape, botLeft))
         switch (push) {
           .left => botLeft[0] -= 1,
           .right => botLeft[0] += 1,
         };
-      //const dirChar: u8 = switch (push) { .left => '<', .right => '>' };
-      //std.debug.print("moved h {c}\n", .{ dirChar }); //debug
-      //try printBoard(alloc, board.items, shape, botLeft); //debug
+      //try board.debugPrint(shape, botLeft); //debug
       //std.debug.print("\n", .{}); //debug
 
-      if (!shape.canFall(board.items, botLeft))
+      if (!try board.canFall(alloc, shape, botLeft))
         break;
       botLeft[1] -= 1;
-      //std.debug.print("moved v\n", .{}); //debug
-      //try printBoard(alloc, board.items, shape, botLeft); //debug
+      //try board.debugPrint(shape, botLeft); //debug
       //std.debug.print("\n", .{}); //debug
     }
+    //std.debug.print("dropped\n", .{}); //debug
 
-    const heightNeeded = botLeft[1] + shape.dims[1];
-    if (board.items.len < heightNeeded)
-      try board.appendNTimes(alloc, .{false} ** boardWidth, heightNeeded - board.items.len);
-    shape.fill(board.items, botLeft);
+    _ = try board.fill(alloc, shape, botLeft);
   }
 
-  return .{ board.items.len, 0 };
+  return .{ board.height, 0 };
 }
 
-fn printBoard(alloc: Allocator, board: [][boardWidth]bool, shape: Shape, botLeft: [2]u64) !void {
-  std.debug.print("{any} {any}\n", .{shape, botLeft});
-  const future = try alloc.alloc([boardWidth]bool, @max(board.len, botLeft[1] + shape.dims[1]));
-  defer alloc.free(future);
-  mem.copy([boardWidth]bool, future, board);
-  mem.set([boardWidth]bool, future[board.len..], .{false} ** boardWidth);
-  shape.fill(future, botLeft);
-
-  var y: u64 = future.len;
-  while (y > 0) {
-    y -= 1;
-    std.debug.print("|", .{});
-    for (future[y], 0..) |new, x| {
-      const char: u8 = if (y < board.len and board[y][x]) '#' else if (new) '@' else '.';
-      std.debug.print("{c}", .{char});
-    }
-    std.debug.print("|\n", .{});
-  }
-}
