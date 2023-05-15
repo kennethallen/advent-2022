@@ -62,11 +62,12 @@ fn Scenario(comptime workerCount: usize, comptime deadline: u64) type {
             var nextWorkers = self.workers;
             nextWorkers[nextWorkerIdx] = .{ .pos = dest, .ready = valveOpenTime };
 
-            max = @max(max, (Scenario(workerCount, deadline){
+            var alt = Scenario(workerCount, deadline){
               .pressureReleased = self.pressureReleased + (deadline - valveOpenTime) * valves[dest].flow,
               .toOpen = self.toOpen[1..],
               .workers = nextWorkers,
-            }).search(valves, dists));
+            };
+            max = @max(max, alt.search(valves, dists));
           }
         }
       }
