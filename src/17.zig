@@ -181,16 +181,20 @@ const Board = struct {
     }
 
     fn canMoveHoriz(self: *@This(), alloc: Allocator, dir: Push, shape: Shape, shapePos: [2]u64) !bool {
-        return shapePos[0] != switch (dir) {
-            .left => 0,
-            .right => boardWidth - shape.dims()[0],
-        } and !try self.overlaps(alloc, shape, .{
+        return @This().canMoveHorizWallsOnly(dir, shape, shapePos) and !try self.overlaps(alloc, shape, .{
             switch (dir) {
                 .left => shapePos[0] - 1,
                 .right => shapePos[0] + 1,
             },
             shapePos[1],
         });
+    }
+
+    fn canMoveHorizWallsOnly(dir: Push, shape: Shape, shapePos: [2]u64) bool {
+        return shapePos[0] != switch (dir) {
+            .left => 0,
+            .right => boardWidth - shape.dims()[0],
+        };
     }
 
     fn canFall(self: *@This(), alloc: Allocator, shape: Shape, shapePos: [2]u64) !bool {
@@ -223,18 +227,32 @@ pub fn main() ![2]u64 {
     var board = Board{};
     defer board.deinit(alloc);
 
-    var pushIdx: u32 = 0;
-    //for (0..1_000_000_000_000) |rock| {
-    for (0..2022) |rock| {
+    var pushIdx: u64 = 0;
+    //for (0..2022) |rock| {
+    for (0..1_000_000_000_000) |rock| {
         const shape = @intToEnum(Shape, rock % @typeInfo(Shape).Enum.fields.len);
-        var shapePos = [2]u64{ 2, board.height + 3 };
+        var shapePos = [2]u64{ 2, board.height }; // y coord is after first three guaranteed drops
 
         //board.debugPrint(shape, shapePos); //debug
         //std.debug.print("\n", .{}); //debug
 
+        for (0..3) |_| {
+            const push = pushes.items[pushIdx];
+            pushIdx = (pushIdx + 1) % pushes.items.len;
+
+            switch (push) {
+                .left => {
+                    if (shapePos[0] != 0) shapePos[0] -= 1;
+                },
+                .right => {
+                    if (shapePos[0] != boardWidth - shape.dims()[0]) shapePos[0] += 1;
+                },
+            }
+        }
+
         while (true) {
-            const push = pushes.items[pushIdx % pushes.items.len];
-            pushIdx += 1;
+            const push = pushes.items[pushIdx];
+            pushIdx = (pushIdx + 1) % pushes.items.len;
 
             //std.debug.print("{}\n", .{ push }); //debug
             if (try board.canMoveHoriz(alloc, push, shape, shapePos))
@@ -254,8 +272,8 @@ pub fn main() ![2]u64 {
         //std.debug.print("dropped\n", .{}); //debug
 
         try board.fill(alloc, shape, shapePos);
-        if (rock % 1_000_000 == 0)
-            std.debug.print("{any}\n", .{rock}); //debug
+        if (rock % 10_000_000 == 0)
+            std.debug.print("{any}\n", .{rock / 1_000_000}); //debug
     }
 
     return .{ board.height, 0 };
