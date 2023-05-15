@@ -78,11 +78,11 @@ const Board = struct {
         self.rows.deinit(alloc);
     }
 
-    fn debugPrint(self: @This(), shape: Shape, shapePos: [2]u64) !void {
+    fn debugPrint(self: @This(), shape: Shape, shapePos: [2]u64) void {
         std.debug.print("{any} {any}\n", .{ shape, shapePos });
 
         var y: u64 = @max(self.height, shapePos[1] + shape.dims()[1]);
-        while (y > 0) {
+        while (y > self.bottomOffset) {
             y -= 1;
 
             const row: Row = if (y - self.bottomOffset < self.rows.items.len) self.rows.items[y - self.bottomOffset] else 0;
@@ -95,6 +95,7 @@ const Board = struct {
             }
             std.debug.print("|\n", .{});
         }
+        std.debug.print("{any} rows, {any} omitted and {any} materialized\n", .{ self.height, self.bottomOffset, self.rows.items.len });
     }
 
     fn ensureRowCount(self: *@This(), alloc: Allocator, reqHeight: u64) !void {
@@ -102,7 +103,7 @@ const Board = struct {
             try self.rows.appendNTimes(alloc, 0, reqHeight - self.rows.items.len);
     }
 
-    fn fill(self: *@This(), alloc: Allocator, shape: Shape, shapePos: [2]u64) !u64 {
+    fn fill(self: *@This(), alloc: Allocator, shape: Shape, shapePos: [2]u64) !void {
         const y = shapePos[1] - self.bottomOffset;
         const shapeHeight = shape.dims()[1];
         try self.ensureRowCount(alloc, y + shapeHeight);
@@ -134,7 +135,21 @@ const Board = struct {
                 for (self.rows.items[y .. y + 2]) |*row| row.* |= mask;
             },
         }
-        return 0;
+
+        var rowIdx: u64 = y + shapeHeight;
+        while (rowIdx > y) {
+            rowIdx -= 1;
+            if (self.rows.items[rowIdx] == 0b1111111) {
+                //self.debugPrint(shape, shapePos);
+                //std.debug.print("{any} rows, {any} omitted and {any} materialized\n", .{ self.height, self.bottomOffset, self.rows.items.len });//debug
+
+                self.bottomOffset += rowIdx + 1;
+                try self.rows.replaceRange(alloc, 0, rowIdx + 1, &.{});
+
+                //std.debug.print("{any} rows, {any} omitted and {any} materialized\n", .{ self.height, self.bottomOffset, self.rows.items.len });//debug
+                break;
+            }
+        }
     }
 
     fn overlaps(self: *@This(), alloc: Allocator, shape: Shape, shapePos: [2]u64) !bool {
@@ -214,7 +229,7 @@ pub fn main() ![2]u64 {
         const shape = @intToEnum(Shape, rock % @typeInfo(Shape).Enum.fields.len);
         var shapePos = [2]u64{ 2, board.height + 3 };
 
-        //try board.debugPrint(shape, shapePos); //debug
+        //board.debugPrint(shape, shapePos); //debug
         //std.debug.print("\n", .{}); //debug
 
         while (true) {
@@ -227,18 +242,20 @@ pub fn main() ![2]u64 {
                     .left => shapePos[0] -= 1,
                     .right => shapePos[0] += 1,
                 };
-            //try board.debugPrint(shape, shapePos); //debug
+            //board.debugPrint(shape, shapePos); //debug
             //std.debug.print("\n", .{}); //debug
 
             if (!try board.canFall(alloc, shape, shapePos))
                 break;
             shapePos[1] -= 1;
-            //try board.debugPrint(shape, shapePos); //debug
+            //board.debugPrint(shape, shapePos); //debug
             //std.debug.print("\n", .{}); //debug
         }
         //std.debug.print("dropped\n", .{}); //debug
 
-        _ = try board.fill(alloc, shape, shapePos);
+        try board.fill(alloc, shape, shapePos);
+        if (rock % 1_000_000 == 0)
+            std.debug.print("{any}\n", .{rock}); //debug
     }
 
     return .{ board.height, 0 };
