@@ -11,22 +11,23 @@ const Allocator = mem.Allocator;
 const Day18Error = error{};
 
 const Grid = struct {
-    grid: []bool,
+    bitset: std.DynamicBitSetUnmanaged,
     dims: [3]u64,
     surfaceArea: u64 = 0,
 
-    fn deinit(self: @This(), alloc: Allocator) void {
-        alloc.free(self.grid);
+    fn deinit(self: *@This(), alloc: Allocator) void {
+        self.bitset.deinit(alloc);
     }
 
     fn init(dims: [3]u64, alloc: Allocator) !@This() {
-        const grid = try alloc.alloc(bool, dims[0] * dims[1] * dims[2]);
-        @memset(grid, false);
-        return .{ .grid = grid, .dims = dims };
+        return .{
+            .bitset = try std.DynamicBitSetUnmanaged.initEmpty(alloc, dims[0] * dims[1] * dims[2]),
+            .dims = dims,
+        };
     }
 
     fn add(self: *@This(), cube: [3]u64) void {
-        self.grid[self.index(cube)] = true;
+        self.bitset.set(self.index(cube));
 
         for (0..3) |dim| {
             if (cube[dim] > 0) {
@@ -61,7 +62,7 @@ const Grid = struct {
     }
 
     fn get(self: @This(), coords: [3]u64) bool {
-        return self.grid[self.index(coords)];
+        return self.bitset.isSet(self.index(coords));
     }
 
     fn externalArea(self: @This(), alloc: Allocator) !u64 {
