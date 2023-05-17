@@ -1,4 +1,5 @@
 const std = @import("std");
+const fmt = std.fmt;
 const fs = std.fs;
 const io = std.io;
 const math = std.math;
@@ -21,7 +22,7 @@ pub fn main() ![2]u64 {
                     _ = maxElves.insert(e);
                     elf = null;
                 }
-            } else elf = (elf orelse 0) + try std.fmt.parseUnsigned(u64, line, 0);
+            } else elf = (elf orelse 0) + try fmt.parseUnsigned(u64, line, 0);
         }
         if (elf) |e| _ = maxElves.insert(e);
     }

@@ -1,4 +1,5 @@
 const std = @import("std");
+const fmt = std.fmt;
 const fs = std.fs;
 const io = std.io;
 
@@ -17,10 +18,10 @@ pub fn main() ![2]u64 {
         var buf: [100]u8 = undefined;
 
         while (true) {
-            const e0lo = try std.fmt.parseUnsigned(u64, try reader.readUntilDelimiterOrEof(&buf, '-') orelse break, 0);
-            const e0hi = try std.fmt.parseUnsigned(u64, try reader.readUntilDelimiter(&buf, ','), 0);
-            const e1lo = try std.fmt.parseUnsigned(u64, try reader.readUntilDelimiter(&buf, '-'), 0);
-            const e1hi = try std.fmt.parseUnsigned(u64, try reader.readUntilDelimiter(&buf, '\n'), 0);
+            const e0lo = try fmt.parseUnsigned(u64, try reader.readUntilDelimiterOrEof(&buf, '-') orelse break, 0);
+            const e0hi = try fmt.parseUnsigned(u64, try reader.readUntilDelimiter(&buf, ','), 0);
+            const e1lo = try fmt.parseUnsigned(u64, try reader.readUntilDelimiter(&buf, '-'), 0);
+            const e1hi = try fmt.parseUnsigned(u64, try reader.readUntilDelimiter(&buf, '\n'), 0);
 
             if (e0lo > e0hi or e1lo > e1hi)
                 return Day04Error.InvalidAssignmentPair;

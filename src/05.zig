@@ -1,4 +1,5 @@
 const std = @import("std");
+const fmt = std.fmt;
 const fs = std.fs;
 const heap = std.heap;
 const io = std.io;
@@ -75,13 +76,13 @@ pub fn main() ![2]u64 {
             while (true) {
                 if (!mem.eql(u8, "move", try reader.readUntilDelimiterOrEof(&buf, ' ') orelse break))
                     return Day05Error.InvalidMoves;
-                var n = try std.fmt.parseUnsigned(u64, try reader.readUntilDelimiter(&buf, ' '), 0);
+                var n = try fmt.parseUnsigned(u64, try reader.readUntilDelimiter(&buf, ' '), 0);
                 if (!mem.eql(u8, "from", try reader.readUntilDelimiter(&buf, ' ')))
                     return Day05Error.InvalidMoves;
-                const from = try std.fmt.parseUnsigned(u64, try reader.readUntilDelimiter(&buf, ' '), 0);
+                const from = try fmt.parseUnsigned(u64, try reader.readUntilDelimiter(&buf, ' '), 0);
                 if (!mem.eql(u8, "to", try reader.readUntilDelimiter(&buf, ' ')))
                     return Day05Error.InvalidMoves;
-                const to = try std.fmt.parseUnsigned(u64, try reader.readUntilDelimiter(&buf, '\n'), 0);
+                const to = try fmt.parseUnsigned(u64, try reader.readUntilDelimiter(&buf, '\n'), 0);
 
                 {
                     const fromS = &stacks1.items[from - 1];
