@@ -58,7 +58,7 @@ const Grid = struct {
 
     fn index(self: @This(), coords: [3]u64) u64 {
         for (coords, 0..) |coord, i| std.debug.assert(coord < self.dims[i]);
-        return (coords[0] * self.dims[0] + coords[1]) * self.dims[1] + coords[2];
+        return (coords[0] * self.dims[1] + coords[1]) * self.dims[2] + coords[2];
     }
 
     fn get(self: @This(), coords: [3]u64) bool {
@@ -73,62 +73,60 @@ const Grid = struct {
 
         // x
         for (0..self.dims[1]) |y| for (0..self.dims[2]) |z| {
-            if (self.get(.{0, y, z})) {
-                area += 1;
-            } else {
+            if (self.get(.{0, y, z}))
+                area += 1
+            else
                 try toVisit.append(alloc, .{0, y, z});
-            }
-            if (self.get(.{self.dims[0]-1, y, z})) {
-                area += 1;
-            } else {
+
+            if (self.get(.{self.dims[0]-1, y, z}))
+                area += 1
+            else
                 try toVisit.append(alloc, .{self.dims[0]-1, y, z});
-            }
         };
         // y
         for (0..self.dims[0]) |x| for (0..self.dims[2]) |z| {
-            if (self.get(.{x, 0, z})) {
-                area += 1;
-            } else {
+            if (self.get(.{x, 0, z}))
+                area += 1
+            else
                 try toVisit.append(alloc, .{x, 0, z});
-            }
-            if (self.get(.{x, self.dims[1]-1, z})) {
-                area += 1;
-            } else {
+ 
+            if (self.get(.{x, self.dims[1]-1, z}))
+                area += 1
+            else
                 try toVisit.append(alloc, .{x, self.dims[1]-1, z});
-            }
         };
         // z
         for (0..self.dims[0]) |x| for (0..self.dims[1]) |y| {
-            if (self.get(.{x, y, 0})) {
-                area += 1;
-            } else {
+            if (self.get(.{x, y, 0}))
+                area += 1
+            else
                 try toVisit.append(alloc, .{x, y, 0});
-            }
-            if (self.get(.{x, y, self.dims[2]-1})) {
-                area += 1;
-            } else {
+
+            if (self.get(.{x, y, self.dims[2]-1}))
+                area += 1
+            else
                 try toVisit.append(alloc, .{x, y, self.dims[2]-1});
-            }
         };
 
-        var visited = std.AutoHashMapUnmanaged([3]u64, void){};
+        var visited = try std.DynamicBitSetUnmanaged.initEmpty(alloc, self.bitset.bit_length);
         defer visited.deinit(alloc);
         while (toVisit.popOrNull()) |coord| {
-            if ((try visited.getOrPut(alloc, coord)).found_existing) continue;
+            if (visited.isSet(self.index(coord))) continue;
+            visited.set(self.index(coord));
 
             // x
             if (coord[0] > 0) {
                 const neighbor = .{coord[0]-1, coord[1], coord[2]};
                 if (self.get(neighbor))
                     area += 1
-                else
+                else if (!visited.isSet(self.index(neighbor)))
                     try toVisit.append(alloc, neighbor);
             }
             if (coord[0]+1 < self.dims[0]) {
                 const neighbor = .{coord[0]+1, coord[1], coord[2]};
                 if (self.get(neighbor))
                     area += 1
-                else
+                else if (!visited.isSet(self.index(neighbor)))
                     try toVisit.append(alloc, neighbor);
             }
 
@@ -137,14 +135,14 @@ const Grid = struct {
                 const neighbor = .{coord[0], coord[1]-1, coord[2]};
                 if (self.get(neighbor))
                     area += 1
-                else
+                else if (!visited.isSet(self.index(neighbor)))
                     try toVisit.append(alloc, neighbor);
             }
             if (coord[1]+1 < self.dims[1]) {
                 const neighbor = .{coord[0], coord[1]+1, coord[2]};
                 if (self.get(neighbor))
                     area += 1
-                else
+                else if (!visited.isSet(self.index(neighbor)))
                     try toVisit.append(alloc, neighbor);
             }
 
@@ -153,14 +151,14 @@ const Grid = struct {
                 const neighbor = .{coord[0], coord[1], coord[2]-1};
                 if (self.get(neighbor))
                     area += 1
-                else
+                else if (!visited.isSet(self.index(neighbor)))
                     try toVisit.append(alloc, neighbor);
             }
             if (coord[2]+1 < self.dims[2]) {
                 const neighbor = .{coord[0], coord[1], coord[2]+1};
                 if (self.get(neighbor))
                     area += 1
-                else
+                else if (!visited.isSet(self.index(neighbor)))
                     try toVisit.append(alloc, neighbor);
             }
         }
@@ -212,9 +210,8 @@ pub fn main() ![2]u64 {
     std.debug.assert(cubes.items.len > 0);
 
     var dims: [3]u64 = undefined;
-    for (&dims, 0..) |*dim, i| {
-        dim.* = maxes[i] + 1 - mins[i];
-    }
+    for (mins, 0..) |min, i| dims[i] = maxes[i] + 1 - min;
+
     var grid = try Grid.init(dims, alloc);
     defer grid.deinit(alloc);
 
