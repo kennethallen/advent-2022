@@ -37,7 +37,7 @@ pub fn main() !void {
             15 => @import("15.zig").main(),
             16 => @import("16.zig").main(),
             17 => @import("17.zig").main(),
-            //    18 => @import("18.zig").main(),
+            18 => @import("18.zig").main(),
             //    19 => @import("19.zig").main(),
             //    20 => @import("20.zig").main(),
             //    21 => @import("21.zig").main(),
